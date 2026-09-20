@@ -1,0 +1,65 @@
+---
+import Base from '../../layouts/Base.astro'
+import ArtworkCard from '../../components/ArtworkCard.astro'
+import {CATS, getArtworks} from '../../lib/sanity'
+
+const artworks = await getArtworks()
+---
+
+<Base title="Artworks — Migumind" section="artworks">
+  <div class="page">
+    <div class="band" style="--accent:var(--forest)">
+      <h1>Artworks</h1>
+      <span class="sub m m11">ARCHIVE / {artworks.length} WORKS<br />MIGUMIND / 2026</span>
+    </div>
+
+    <div class="wrap">
+      <div class="filters" role="group" aria-label="Filter artworks by category">
+        {
+          CATS.map(([key, label]) => (
+            <button type="button" data-f={key} aria-pressed={key === 'all' ? 'true' : 'false'}>
+              {label}
+            </button>
+          ))
+        }
+        <span class="count m" id="shown">{artworks.length} SHOWN</span>
+      </div>
+
+      <div class="grid12" id="agrid">
+        {artworks.map((a) => <ArtworkCard artwork={a} />)}
+      </div>
+
+      {artworks.length === 0 && <p class="body">No artworks published yet.</p>}
+
+      <div style="height:clamp(30px,5vw,60px)"></div>
+    </div>
+  </div>
+</Base>
+
+<script is:inline>
+  ;(function () {
+    var filters = document.querySelector('.filters')
+    var grid = document.getElementById('agrid')
+    var shown = document.getElementById('shown')
+    if (!filters || !grid || !shown) return
+
+    filters.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-f]')
+      if (!btn) return
+      var want = btn.dataset.f
+
+      filters.querySelectorAll('button[data-f]').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b === btn))
+      })
+
+      var count = 0
+      grid.querySelectorAll('.card').forEach(function (card) {
+        var match = want === 'all' || card.dataset.category === want
+        card.hidden = !match
+        if (match) count++
+      })
+
+      shown.textContent = count + ' SHOWN'
+    })
+  })()
+</script>

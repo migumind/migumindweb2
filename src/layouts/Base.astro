@@ -1,0 +1,143 @@
+---
+import '../styles/site.css'
+
+interface Props {
+  title: string
+  description?: string
+  section?: string
+}
+
+const {
+  title,
+  description = 'Miguel Pacheco — artist and designer in Sydney. Painting, printmaking, live painting and graphic design. Artworks, exhibitions and studio archive.',
+  section = '',
+} = Astro.props
+
+const NAV = [
+  ['/artworks', 'Artworks', 'artworks'],
+  ['/exhibitions', 'Exhibitions', 'exhibitions'],
+  ['/events', 'Events', 'events'],
+  ['/studio', 'Studio', 'studio'],
+  ['/about', 'About', 'about'],
+  ['/shop', 'Shop', 'shop'],
+  ['/design', 'Graphic Design', 'design'],
+]
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MIGUMIND" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="https://miguelpacheco.xyz/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#F1EFE7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131511" media="(prefers-color-scheme: dark)" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Martian+Mono:wght@300;400;500;700&display=swap"
+    />
+
+    <script is:inline>
+      // Applied before paint so the chosen theme does not flash on each page load.
+      try {
+        var t = localStorage.getItem('theme')
+        if (t) document.documentElement.setAttribute('data-theme', t)
+      } catch (e) {}
+    </script>
+  </head>
+
+  <body>
+    <header class="nav">
+      <div class="navrow">
+        <a href="/" class="brand">Migumind</a>
+        <nav class="navlinks" id="navlinks">
+          {
+            NAV.map(([href, label, key]) => (
+              <a href={href} class={section === key ? 'on' : ''}>
+                {label}
+              </a>
+            ))
+          }
+        </nav>
+        <div class="navtools">
+          <button id="theme" type="button" aria-label="Toggle colour theme">Theme</button>
+          <button id="burger" type="button" aria-expanded="false" aria-controls="navlinks">Menu</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="ft">
+      <div class="fw">Migumind</div>
+      <div class="ftcols">
+        <div class="col">
+          <h4>Work</h4>
+          <a href="/artworks">Artworks</a>
+          <a href="/exhibitions">Exhibitions</a>
+          <a href="/events">Events + Live Painting</a>
+          <a href="/studio">Studio</a>
+        </div>
+        <div class="col">
+          <h4>Practice</h4>
+          <a href="/about">About</a>
+          <a href="/design">Graphic Design</a>
+          <a href="/shop">Shop</a>
+          <a href="/contact">Contact</a>
+        </div>
+        <div class="col">
+          <h4>Elsewhere</h4>
+          <a href="/contact">[INSTAGRAM]</a>
+          <a href="/contact">[EMAIL]</a>
+        </div>
+        <div class="col">
+          <h4>Register</h4>
+          <span class="m" style="color:#C7CABF">ARTIST / DESIGNER</span>
+          <span class="m" style="color:#C7CABF">SYDNEY / AUSTRALIA</span>
+          <span class="m" style="color:#C7CABF">MIGUELPACHECO.XYZ</span>
+        </div>
+      </div>
+      <div class="ftend m m11">
+        <span class="reg"><i></i></span><span>MIGUMIND / 2026</span><span>INK / PAPER / SCREEN</span>
+      </div>
+    </footer>
+
+    <script is:inline>
+      document.getElementById('burger').addEventListener('click', function () {
+        var n = document.getElementById('navlinks')
+        var open = n.classList.toggle('open')
+        this.setAttribute('aria-expanded', String(open))
+        this.textContent = open ? 'Close' : 'Menu'
+      })
+
+      document.getElementById('theme').addEventListener('click', function () {
+        var r = document.documentElement
+        var cur = r.getAttribute('data-theme')
+        var dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        var next = dark ? 'light' : 'dark'
+        r.setAttribute('data-theme', next)
+        try {
+          localStorage.setItem('theme', next)
+        } catch (e) {}
+      })
+    </script>
+  </body>
+</html>

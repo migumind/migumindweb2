@@ -1,0 +1,70 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import {formatDate, getStudioEntries, type StudioEntry} from '../../lib/sanity'
+import {ratioOf, urlFor} from '../../lib/image'
+
+export async function getStaticPaths() {
+  const entries = await getStudioEntries()
+  return entries.map((entry) => ({params: {slug: entry.slug}, props: {entry}}))
+}
+
+interface Props {
+  entry: StudioEntry
+}
+
+const {entry: s} = Astro.props
+---
+
+<Base title={`${s.title} — Studio — Migumind`} section="studio">
+  <div class="page">
+    <div class="wrap">
+      <div class="detail">
+        <div>
+          <div class="cropframe">
+            <span class="ck"></span><span class="ck"></span><span class="ck"></span><span class="ck"></span>
+            <span class="frame contain" style={`aspect-ratio:${ratioOf(s.image, '1 / 1')}`}>
+              {s.image && <img src={urlFor(s.image).width(1600).fit('max').auto('format').url()} alt={s.title} />}
+            </span>
+          </div>
+
+          {
+            s.description && s.description.length > 0 && (
+              <div class="richtext" style="margin-top:clamp(26px,4vw,46px)">
+                <PortableText value={s.description} />
+              </div>
+            )
+          }
+        </div>
+
+        <aside class="rail">
+          <div>
+            <div class="m dimmer" style="margin-bottom:6px">STUDIO</div>
+            <h1
+              style="margin:0;font-variation-settings:'wdth' 106,'wght' 780;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.028em;line-height:1;text-transform:uppercase"
+            >
+              {s.title}
+            </h1>
+          </div>
+
+          <dl>
+            {s.date && <div><dt>Date</dt><dd>{formatDate(s.date)}</dd></div>}
+            {s.category && <div><dt>Category</dt><dd>{s.category}</dd></div>}
+            {s.materials && <div><dt>Materials</dt><dd>{s.materials}</dd></div>}
+          </dl>
+
+          {
+            s.relatedArtwork && (
+              <div>
+                <div class="m dimmer" style="margin-bottom:8px">RELATED WORK</div>
+                <a class="chip" href={`/artworks/${s.relatedArtwork.slug}`}>{s.relatedArtwork.title} →</a>
+              </div>
+            )
+          }
+
+          <a class="chip" href="/studio">← All studio entries</a>
+        </aside>
+      </div>
+    </div>
+  </div>
+</Base>

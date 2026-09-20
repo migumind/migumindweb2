@@ -1,0 +1,38 @@
+---
+import {STATUS, type Artwork} from '../lib/sanity'
+import {ratioOf, urlFor} from '../lib/image'
+
+interface Props {
+  artwork: Artwork
+  width?: number
+}
+
+const {artwork: a, width} = Astro.props
+const w = width ?? a.gridWidth ?? 4
+---
+
+<a class={`card w${w}`} href={`/artworks/${a.slug}`} data-category={a.category}>
+  <div class="shot">
+    <span class="frame" style={`aspect-ratio:${ratioOf(a.image)}`}>
+      {
+        a.image && (
+          <img
+            src={urlFor(a.image).width(900).fit('max').auto('format').url()}
+            alt={a.title}
+            loading="lazy"
+          />
+        )
+      }
+    </span>
+    <span class="plate"></span>
+    <span class="plate b"></span>
+  </div>
+  <div class="meta">
+    <h3>{a.title}</h3>
+    <span class="sm">{a.year}<br />{a.medium}</span>
+  </div>
+  <div class="under">
+    <span>{a.dimensions}</span>
+    <span>{a.status ? STATUS[a.status] : ''}</span>
+  </div>
+</a>

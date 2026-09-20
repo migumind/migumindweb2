@@ -1,0 +1,150 @@
+---
+import Base from '../../layouts/Base.astro'
+import {formatDate, getSketchbooks, getStudioEntries} from '../../lib/sanity'
+import {ratioOf, urlFor} from '../../lib/image'
+
+const entries = await getStudioEntries()
+const sketchbooks = await getSketchbooks()
+
+// The prototype's editorial composition (an overlapping pair, then a featured
+// column) only reads properly with enough material. Below that, plain grid.
+const composed = entries.length >= 3
+const [overlapA, overlapB, featured] = composed ? entries : []
+const rest = composed ? entries.slice(3) : entries
+
+const sheetCount = sketchbooks.reduce((n, b) => n + (b.sheets?.length ?? 0), 0)
+const img = (src: any, w: number) => urlFor(src).width(w).fit('max').auto('format').url()
+---
+
+<Base title="Studio — Migumind" section="studio">
+  <div class="page">
+    <div class="band" style="--accent:var(--mustard);color:var(--fixed-ink)">
+      <h1>Studio</h1>
+      <span class="sub m m11">
+        THE WORK IS STILL HAPPENING<br />{entries.length} {entries.length === 1 ? 'ENTRY' : 'ENTRIES'}
+        {sheetCount > 0 && <> · {sheetCount} SKETCHES</>}
+      </span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk">
+        <p class="body" style="margin-bottom:clamp(24px,4vw,44px)">
+          The space between finished works. Tests, offcuts, colour trials, plates, the wall on a
+          given morning. Less resolved than the archive on purpose — but on the same grid.
+        </p>
+
+        {
+          entries.length === 0 && sketchbooks.length === 0 && (
+            <p class="body">Nothing in the studio yet.</p>
+          )
+        }
+
+        <div class="studiogrid">
+          {
+            composed && (
+              <div class="w6 st-entry">
+                <a class="overlap" href={`/studio/${overlapA.slug}`}>
+                  <span class="frame" style={`aspect-ratio:${ratioOf(overlapA.image, '4 / 3')}`}>
+                    {overlapA.image && <img src={img(overlapA.image, 900)} alt={overlapA.title} loading="lazy" />}
+                  </span>
+                  <div class="b">
+                    <span class="frame" style={`aspect-ratio:${ratioOf(overlapB.image, '1 / 1')}`}>
+                      {overlapB.image && <img src={img(overlapB.image, 700)} alt={overlapB.title} loading="lazy" />}
+                    </span>
+                  </div>
+                </a>
+                <div class="cap">
+                  <span class="ttl">{overlapA.title} / {overlapB.title}</span>
+                  <span class="m dimmer">
+                    {formatDate(overlapA.date)} · {overlapA.materials} · OVERLAP PAIR
+                  </span>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            composed && (
+              <div class="w6 st-entry" style="display:flex;flex-direction:column;gap:var(--gut)">
+                <a href={`/studio/${featured.slug}`}>
+                  <span class="frame" style={`aspect-ratio:${ratioOf(featured.image, '3 / 2')}`}>
+                    {featured.image && <img src={img(featured.image, 900)} alt={featured.title} loading="lazy" />}
+                  </span>
+                </a>
+                <div class="swatchrow">
+                  <i style="background:var(--mustard)"></i><i style="background:var(--vermilion)"></i>
+                  <i style="background:var(--sage)"></i><i style="background:var(--cobalt)"></i>
+                  <i style="background:var(--fluor)"></i><i style="background:var(--forest)"></i>
+                </div>
+                <div class="cap">
+                  <span class="ttl">{featured.title}</span>
+                  <span class="m dimmer">{formatDate(featured.date)} · {featured.materials}</span>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            rest.map((s) => (
+              <div class="w4 st-entry">
+                <a href={`/studio/${s.slug}`}>
+                  <span class="frame" style={`aspect-ratio:${ratioOf(s.image, '1 / 1')}`}>
+                    {s.image && <img src={img(s.image, 700)} alt={s.title} loading="lazy" />}
+                  </span>
+                </a>
+                <div class="cap">
+                  <span class="ttl">{s.title}</span>
+                  <span class="m dimmer">
+                    {[formatDate(s.date), s.category, s.materials].filter(Boolean).join(' · ')}
+                  </span>
+                  {s.relatedArtwork && (
+                    <a class="m" href={`/artworks/${s.relatedArtwork.slug}`} style="color:var(--vermilion)">
+                      → RELATED WORK
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      {
+        sketchbooks.length > 0 && (
+          <section class="blk" style="border-top:1px solid var(--rule)">
+            <div class="sh">
+              <h2>Sketchbooks</h2>
+              <div class="r"><span class="m dimmer">{sheetCount} SHEETS</span></div>
+            </div>
+
+            {sketchbooks.map((book) => (
+              <div class="sketchbook">
+                <div class="head">
+                  <span class="ttl">{book.title || formatDate(book.date) || 'Untitled'}</span>
+                  <span class="m dimmer">
+                    {book.title && book.date ? formatDate(book.date) + ' · ' : ''}
+                    {book.sheets?.length ?? 0} SHEETS
+                  </span>
+                </div>
+                <div class="sketchgrid">
+                  {book.sheets?.map((sheet, i) => (
+                    <figure class="sketch">
+                      <span class="frame" style={`aspect-ratio:${ratioOf(sheet, '1 / 1')}`}>
+                        <img
+                          src={img(sheet, 600)}
+                          alt={sheet.caption ?? `Sketch ${i + 1}`}
+                          loading="lazy"
+                        />
+                      </span>
+                      {sheet.caption && <figcaption class="m dimmer">{sheet.caption}</figcaption>}
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        )
+      }
+    </div>
+  </div>
+</Base>

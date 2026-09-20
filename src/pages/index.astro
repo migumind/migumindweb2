@@ -1,0 +1,147 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../layouts/Base.astro'
+import ArtworkCard from '../components/ArtworkCard.astro'
+import {getArtworks, getExhibitions, getHomePage, getStudioEntries} from '../lib/sanity'
+import {ratioOf, urlFor} from '../lib/image'
+
+const [home, artworks, exhibitions, studioEntries] = await Promise.all([
+  getHomePage(),
+  getArtworks(),
+  getExhibitions(),
+  getStudioEntries(),
+])
+
+const featured = artworks.slice(0, 5)
+const SWATCHES = ['--vermilion', '--mustard', '--forest', '--lavender', '--cobalt']
+---
+
+<Base title="Migumind — Miguel Pacheco | Artist &amp; Designer">
+  <div class="page">
+    <div class="hero">
+      <h1 class="big">Migumind</h1>
+      <div class="row m m11">
+        <span>MIGUEL PACHECO</span>
+        <span>ARTIST / DESIGNER / CREATIVE</span>
+        <span>SYDNEY / AUSTRALIA</span>
+        <span class="push" style="display:flex;align-items:center;gap:12px">
+          <span class="swatchrow" style="width:132px;height:13px">
+            {SWATCHES.map((c) => <i style={`background:var(${c})`}></i>)}
+          </span>
+          2026
+        </span>
+      </div>
+
+      <div class="opener-split">
+        <div>
+          {
+            home?.portrait ? (
+              <span class="frame" style={`aspect-ratio:${ratioOf(home.portrait, '2 / 3')}`}>
+                <img
+                  src={urlFor(home.portrait).width(1100).fit('max').auto('format').url()}
+                  alt={home.portraitAlt ?? 'Miguel Pacheco'}
+                />
+              </span>
+            ) : (
+              <div class="ph a23">
+                <span class="no">OPENING</span>
+                <span class="fn">ADD A PHOTO IN THE STUDIO</span>
+              </div>
+            )
+          }
+          {home?.portraitCaption && <div class="cap m dimmer" style="padding-top:9px">{home.portraitCaption}</div>}
+        </div>
+
+        <div>
+          <h2 class="say">{home?.statementHeading ?? 'Painting, print and design are one practice'}</h2>
+          {
+            home?.statement && home.statement.length > 0 ? (
+              <div class="richtext"><PortableText value={home.statement} /></div>
+            ) : (
+              <p class="body">
+                A short paragraph in the artist's own words about how the studio moves between
+                canvas, press and screen. Add it on the Home page in the Studio.
+              </p>
+            )
+          }
+          <div style="margin-top:20px"><a class="chip" href="/artworks">Enter the full archive →</a></div>
+        </div>
+      </div>
+    </div>
+
+    {
+      featured.length > 0 && (
+        <div class="wrap">
+          <section class="blk">
+            <div class="sh">
+              <h2>Selected works</h2>
+              <div class="r">
+                <span class="m dimmer">ARCHIVE</span>
+                <a class="m dimmer" href="/artworks">ALL {artworks.length} →</a>
+              </div>
+            </div>
+            <div class="grid12">
+              {featured.map((a) => <ArtworkCard artwork={a} />)}
+            </div>
+          </section>
+        </div>
+      )
+    }
+
+    <div class="slashband">
+      <span class="m">CURRENTLY</span><span class="sl"></span><span class="m">STUDIO ACTIVE</span>
+    </div>
+
+    <div class="wrap">
+      {
+        studioEntries.length > 0 && (
+          <section class="blk">
+            <div class="sh">
+              <h2>Studio</h2>
+              <div class="r">
+                <span class="m dimmer">PROCESS</span>
+                <a class="m dimmer" href="/studio">DRAG →</a>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="track">
+                {studioEntries.slice(0, 6).map((s) => (
+                  <a class="it" href={`/studio/${s.slug}`}>
+                    <span class="frame" style={`aspect-ratio:${ratioOf(s.image, '1 / 1')}`}>
+                      {s.image && <img src={urlFor(s.image).width(600).fit('max').auto('format').url()} alt={s.title} loading="lazy" />}
+                    </span>
+                    <span class="m dim">{[s.title, s.materials].filter(Boolean).join(' · ')}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        exhibitions.length > 0 && (
+          <section class="blk" style="border-top:1px solid var(--rule)">
+            <div class="sh">
+              <h2>Exhibitions</h2>
+              <div class="r">
+                <span class="m dimmer">ARCHIVE</span>
+                <a class="m dimmer" href="/exhibitions">{String(exhibitions.length).padStart(2, '0')} →</a>
+              </div>
+            </div>
+            {exhibitions.map((e) => (
+              <a class="exhrow" href={`/exhibitions/${e.slug}`} style={`--ex:${e.accent}`}>
+                <div class="no">{e.number}</div>
+                <div>
+                  <h3>{e.title}</h3>
+                  {e.collaborators && <span class="m dim">WITH {e.collaborators.toUpperCase()}</span>}
+                </div>
+                <div class="meta m m11">{e.year}<br />{e.location}</div>
+              </a>
+            ))}
+          </section>
+        )
+      }
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro'
+import {getExhibitions} from '../../lib/sanity'
+
+const exhibitions = await getExhibitions()
+---
+
+<Base title="Exhibitions — Migumind" section="exhibitions">
+  <div class="page">
+    <div class="band" style="--accent:var(--lavender);color:var(--fixed-ink)">
+      <h1>Exhibitions</h1>
+      <span class="sub m m11">
+        {String(exhibitions.length).padStart(2, '0')} {exhibitions.length === 1 ? 'SHOW' : 'SHOWS'}<br />MIGUMIND / 2026
+      </span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk">
+        {
+          exhibitions.map((e) => (
+            <a class="exhrow" href={`/exhibitions/${e.slug}`} style={`--ex:${e.accent}`}>
+              <div class="no">{e.number}</div>
+              <div>
+                <h3>{e.title}</h3>
+                {e.collaborators && <span class="m dim">WITH {e.collaborators.toUpperCase()}</span>}
+              </div>
+              <div class="meta m m11">{e.year}<br />{e.location}</div>
+            </a>
+          ))
+        }
+
+        {exhibitions.length === 0 && <p class="body">No exhibitions published yet.</p>}
+      </section>
+    </div>
+  </div>
+</Base>

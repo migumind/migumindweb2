@@ -1,0 +1,143 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import ArtworkCard from '../../components/ArtworkCard.astro'
+import {CATS, STATUS, getArtworks, type Artwork} from '../../lib/sanity'
+import {ratioOf, urlFor} from '../../lib/image'
+
+export async function getStaticPaths() {
+  const artworks = await getArtworks()
+  return artworks.map((artwork, i) => ({
+    params: {slug: artwork.slug},
+    props: {
+      artwork,
+      index: i,
+      total: artworks.length,
+      prev: artworks[(i - 1 + artworks.length) % artworks.length],
+      next: artworks[(i + 1) % artworks.length],
+      related: artworks.filter((x) => x._id !== artwork._id && x.category === artwork.category).slice(0, 3),
+    },
+  }))
+}
+
+interface Props {
+  artwork: Artwork
+  index: number
+  total: number
+  prev: Artwork
+  next: Artwork
+  related: Artwork[]
+}
+
+const {artwork: a, index, total, prev, next, related} = Astro.props
+const no = String(index + 1).padStart(3, '0')
+const categoryLabel = CATS.find(([k]) => k === a.category)?.[1] ?? a.category
+---
+
+<Base title={`${a.title} — Migumind`} section="artworks">
+  <div class="page">
+    <div class="wrap">
+      <div class="detail">
+        <div>
+          <div class="cropframe">
+            <span class="ck"></span><span class="ck"></span><span class="ck"></span><span class="ck"></span>
+            <span class="frame contain" style={`aspect-ratio:${ratioOf(a.image)}`}>
+              {a.image && <img src={urlFor(a.image).width(1600).fit('max').auto('format').url()} alt={a.title} />}
+            </span>
+          </div>
+
+          {
+            a.description && a.description.length > 0 && (
+              <div class="richtext" style="margin-top:clamp(26px,4vw,46px)">
+                <PortableText value={a.description} />
+              </div>
+            )
+          }
+        </div>
+
+        <aside class="rail">
+          <div>
+            <div class="m dimmer" style="margin-bottom:6px">
+              WORK_{no} · {String(index + 1).padStart(2, '0')} / {total}
+            </div>
+            <h1
+              style="margin:0;font-variation-settings:'wdth' 106,'wght' 780;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.028em;line-height:1;text-transform:uppercase"
+            >
+              {a.title}
+            </h1>
+          </div>
+
+          {a.status && <span class={`status st-${a.status}`}>{STATUS[a.status]}</span>}
+
+          <dl>
+            {a.year && <div><dt>Year</dt><dd>{a.year}</dd></div>}
+            {a.medium && <div><dt>Medium</dt><dd>{a.medium}</dd></div>}
+            {a.dimensions && <div><dt>Dimensions</dt><dd>{a.dimensions}</dd></div>}
+            <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
+            {a.exhibition && <div><dt>Exhibition</dt><dd>{a.exhibition.title}</dd></div>}
+          </dl>
+
+          {
+            a.exhibition && (
+              <a
+                class="chip"
+                href={`/exhibitions/${a.exhibition.slug}`}
+                style={a.exhibition.accent ? `border-color:${a.exhibition.accent};color:${a.exhibition.accent}` : ''}
+              >
+                Exhibition {a.exhibition.number} →
+              </a>
+            )
+          }
+
+          {
+            a.studioEntries && a.studioEntries.length > 0 && (
+              <div>
+                <div class="m dimmer" style="margin-bottom:8px">STUDIO PROCESS</div>
+                <div class="linkrow">
+                  {a.studioEntries.map((s) => (
+                    <a class="chip" href={`/studio/${s.slug}`}>{s.title}</a>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          <div>
+            <div class="m dimmer" style="margin-bottom:8px">ENQUIRE</div>
+            <a class="chip" href="/contact">[EMAIL] →</a>
+          </div>
+        </aside>
+      </div>
+
+      {
+        related.length > 0 && (
+          <section class="blk" style="border-top:1px solid var(--rule)">
+            <div class="sh">
+              <h2>Related works</h2>
+              <div class="r"><span class="m dimmer">SAME CATEGORY</span></div>
+            </div>
+            <div class="grid12">
+              {related.map((r) => <ArtworkCard artwork={r} width={4} />)}
+            </div>
+          </section>
+        )
+      }
+
+      {
+        total > 1 && (
+          <div class="prevnext">
+            <a href={`/artworks/${prev.slug}`}>
+              <span class="m dimmer">← PREVIOUS</span>
+              <strong>{prev.title}</strong>
+            </a>
+            <a href={`/artworks/${next.slug}`}>
+              <span class="m dimmer">NEXT →</span>
+              <strong>{next.title}</strong>
+            </a>
+          </div>
+        )
+      }
+    </div>
+  </div>
+</Base>
+

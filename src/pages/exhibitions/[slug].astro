@@ -1,0 +1,113 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import ArtworkCard from '../../components/ArtworkCard.astro'
+import {getArtworksByExhibition, getExhibitions, type Artwork, type Exhibition} from '../../lib/sanity'
+import {ratioOf, urlFor} from '../../lib/image'
+
+export async function getStaticPaths() {
+  const exhibitions = await getExhibitions()
+  return Promise.all(
+    exhibitions.map(async (exhibition) => ({
+      params: {slug: exhibition.slug},
+      props: {exhibition, works: await getArtworksByExhibition(exhibition._id)},
+    })),
+  )
+}
+
+interface Props {
+  exhibition: Exhibition
+  works: Artwork[]
+}
+
+const {exhibition: e, works} = Astro.props
+const bandColour = e.bandText === 'light' ? 'var(--fixed-paper)' : 'var(--fixed-ink)'
+// Repeating 8/4/4/8 rhythm, matching the prototype's installation grid.
+const INSTALL_WIDTHS = [8, 4, 4, 8]
+---
+
+<Base title={`${e.title} — Migumind`} section="exhibitions">
+  <div class="page">
+    <div class="band" style={`--accent:${e.accent};color:${bandColour}`}>
+      <h1>{e.title}</h1>
+      <span class="sub m m11">EXHIBITION_{e.number}<br />{e.year} · {e.location}</span>
+    </div>
+
+    {
+      e.collaborators && (
+        <div class="slashband">
+          <span class="m">WITH {e.collaborators.toUpperCase()}</span>
+          <span class="sl"></span>
+          <span class="m">EXHIBITION_{e.number}</span>
+        </div>
+      )
+    }
+
+    <div class="wrap">
+      <section class="blk">
+        <div class="grid12">
+          <div class="w8">
+            <span class="frame" style={`aspect-ratio:${ratioOf(e.heroImage)}`}>
+              {e.heroImage && <img src={urlFor(e.heroImage).width(1400).fit('max').auto('format').url()} alt={e.title} />}
+            </span>
+          </div>
+          <div class="w4">
+            <div class="m dimmer" style="margin-bottom:10px">STATEMENT</div>
+            {
+              e.statement && e.statement.length > 0 ? (
+                <div class="richtext" style="font-size:14px">
+                  <PortableText value={e.statement} />
+                </div>
+              ) : (
+                <p class="body" style="font-size:14px">No statement yet.</p>
+              )
+            }
+            <dl class="deflist">
+              <div><dt>Dates</dt><dd>{e.dates ?? e.year}</dd></div>
+              <div><dt>Location</dt><dd>{e.location}</dd></div>
+              {e.collaborators && <div><dt>Collaborators</dt><dd>{e.collaborators}</dd></div>}
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      {
+        e.installationImages && e.installationImages.length > 0 && (
+          <section class="blk" style="border-top:1px solid var(--rule)">
+            <div class="sh">
+              <h2>Installation</h2>
+              <div class="r"><span class="m dimmer">DOCUMENTATION</span></div>
+            </div>
+            <div class="grid12">
+              {e.installationImages.map((img, i) => (
+                <div class={`w${INSTALL_WIDTHS[i % INSTALL_WIDTHS.length]}`}>
+                  <span class="frame" style={`aspect-ratio:${ratioOf(img)}`}>
+                    <img
+                      src={urlFor(img).width(1200).fit('max').auto('format').url()}
+                      alt={`${e.title} — installation ${i + 1}`}
+                      loading="lazy"
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      {
+        works.length > 0 && (
+          <section class="blk" style="border-top:1px solid var(--rule)">
+            <div class="sh">
+              <h2>Works in this show</h2>
+              <div class="r"><span class="m dimmer">{works.length} {works.length === 1 ? 'WORK' : 'WORKS'}</span></div>
+            </div>
+            <div class="grid12">
+              {works.map((w) => <ArtworkCard artwork={w} width={4} />)}
+            </div>
+          </section>
+        )
+      }
+    </div>
+  </div>
+</Base>
