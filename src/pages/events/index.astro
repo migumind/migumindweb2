@@ -1,0 +1,64 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import MediaDeck from '../../components/MediaDeck.astro'
+import {formatDate, getEvents} from '../../lib/sanity'
+
+const events = await getEvents()
+---
+
+<Base title="Events + live painting — Migumind" section="events">
+  <div class="page">
+    <div class="band" style="--accent:var(--fluor);color:var(--fixed-ink)">
+      <h1>Events<br />+ live painting</h1>
+      <span class="sub m m11">
+        {String(events.length).padStart(2, '0')} {events.length === 1 ? 'EVENT' : 'EVENTS'}<br />MIGUMIND / 2026
+      </span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk">
+        {events.length === 0 && <p class="body">No events published yet.</p>}
+
+        {
+          events.map((e, i) => (
+            <div class="evt">
+              <div>
+                <div class="m dimmer" style="margin-bottom:8px">EVENT_{String(i + 1).padStart(2, '0')}</div>
+                <h3
+                  style="margin:0 0 12px;font-variation-settings:'wdth' 106,'wght' 760;font-size:clamp(22px,3.4vw,38px);letter-spacing:-.028em;line-height:1;text-transform:uppercase"
+                >
+                  {e.title}
+                </h3>
+                <dl class="deflist" style="margin-top:0">
+                  {e.date && <div><dt>Date</dt><dd>{formatDate(e.date)}</dd></div>}
+                  {e.location && <div><dt>Location</dt><dd>{e.location}</dd></div>}
+                </dl>
+                {
+                  e.description && e.description.length > 0 && (
+                    <div class="richtext" style="margin-top:18px">
+                      <PortableText value={e.description} />
+                    </div>
+                  )
+                }
+              </div>
+
+              <div>
+                {
+                  e.images && e.images.length > 0 ? (
+                    <MediaDeck images={e.images} alt={e.title} label={`${e.title} photographs`} />
+                  ) : (
+                    <div class="ph a32">
+                      <span class="no">LIVE</span>
+                      <span class="fn">ADD PHOTOGRAPHS IN THE STUDIO</span>
+                    </div>
+                  )
+                }
+              </div>
+            </div>
+          ))
+        }
+      </section>
+    </div>
+  </div>
+</Base>

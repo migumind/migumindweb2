@@ -2,6 +2,7 @@
 import {PortableText} from 'astro-portabletext'
 import Base from '../../layouts/Base.astro'
 import ArtworkCard from '../../components/ArtworkCard.astro'
+import HeroMedia from '../../components/HeroMedia.astro'
 import {getArtworksByExhibition, getExhibitions, type Artwork, type Exhibition} from '../../lib/sanity'
 import {ratioOf, urlFor} from '../../lib/image'
 
@@ -47,9 +48,7 @@ const INSTALL_WIDTHS = [8, 4, 4, 8]
       <section class="blk">
         <div class="grid12">
           <div class="w8">
-            <span class="frame" style={`aspect-ratio:${ratioOf(e.heroImage)}`}>
-              {e.heroImage && <img src={urlFor(e.heroImage).width(1400).fit('max').auto('format').url()} alt={e.title} />}
-            </span>
+            <HeroMedia image={e.heroImage} video={e.heroVideo} alt={e.title} width={1400} />
           </div>
           <div class="w4">
             <div class="m dimmer" style="margin-bottom:10px">STATEMENT</div>

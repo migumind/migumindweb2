@@ -1,0 +1,135 @@
+---
+import {ratioOf, responsive} from '../lib/image'
+
+interface Props {
+  images: {_key?: string; asset?: {_ref?: string}}[]
+  alt?: string
+  label?: string
+}
+
+const {images, alt = '', label = 'Photographs'} = Astro.props
+
+// Each card keeps its own slight crookedness for the whole time it is on
+// screen, the way a real photo in a pile does. Derived from the index so the
+// server and the browser agree.
+const tilt = (i: number) => ((i * 37) % 13) - 6
+const deckRatio = ratioOf(images[0], '3 / 2')
+const SIZES = '(max-width: 760px) 90vw, 55vw'
+---
+
+<div class="deckwrap">
+  <div class="deck" data-deck style={`aspect-ratio:${deckRatio}`} aria-roledescription="carousel" aria-label={label}>
+    {
+      images.map((img, i) => (
+        <div class="card" data-card style={`--rot:${tilt(i)}deg;--tx:0px;--ty:0px;--sc:1;--z:${images.length - i};--op:1`}>
+          <span class="frame" style={`aspect-ratio:${ratioOf(img, deckRatio)}`}>
+            <img
+              {...responsive(img, {sizes: SIZES})}
+              alt={`${alt} ${i + 1}`.trim()}
+              draggable="false"
+              decoding="async"
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
+          </span>
+        </div>
+      ))
+    }
+  </div>
+
+  {
+    images.length > 1 && (
+      <div class="deckbar">
+        <button type="button" data-deck-prev aria-label="Previous photograph">←</button>
+        <button type="button" data-deck-next aria-label="Next photograph">Shuffle →</button>
+        <span class="n" data-deck-count>
+          01 / {String(images.length).padStart(2, '0')}
+        </span>
+      </div>
+    )
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-deck]').forEach((deck) => {
+    const cards = [...deck.querySelectorAll<HTMLElement>('[data-card]')]
+    const n = cards.length
+    if (n < 2) return
+
+    const wrap = deck.parentElement!
+    const counter = wrap.querySelector<HTMLElement>('[data-deck-count]')
+    const pad = (v: number) => String(v).padStart(2, '0')
+
+    let offset = 0
+
+    function layout() {
+      cards.forEach((card, i) => {
+        const depth = (i - offset + n * n) % n
+        card.style.setProperty('--z', String(n - depth))
+        card.style.setProperty('--tx', `${depth * 7}px`)
+        card.style.setProperty('--ty', `${depth * 5}px`)
+        card.style.setProperty('--sc', String(1 - depth * 0.04))
+        card.style.setProperty('--op', depth > 3 ? '0' : '1')
+        card.style.pointerEvents = depth === 0 ? 'auto' : 'none'
+      })
+      if (counter) counter.textContent = `${pad((offset % n) + 1)} / ${pad(n)}`
+    }
+
+    const go = (step: number) => {
+      offset = (offset + step + n) % n
+      layout()
+    }
+
+    wrap.querySelector('[data-deck-next]')?.addEventListener('click', () => go(1))
+    wrap.querySelector('[data-deck-prev]')?.addEventListener('click', () => go(-1))
+
+    // Drag / swipe the top card.
+    let id: number | null = null
+    let x0 = 0
+    let y0 = 0
+    let horizontal: boolean | null = null
+
+    deck.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (id !== null) return
+      id = e.pointerId
+      x0 = e.clientX
+      y0 = e.clientY
+      horizontal = null
+      deck.classList.add('dragging')
+    })
+
+    deck.addEventListener('pointermove', (e: PointerEvent) => {
+      if (id !== e.pointerId) return
+      const dx = e.clientX - x0
+      const dy = e.clientY - y0
+
+      // Decide once whether this is a horizontal swipe or a page scroll.
+      if (horizontal === null) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+        horizontal = Math.abs(dx) > Math.abs(dy)
+        if (horizontal) deck.setPointerCapture(e.pointerId)
+      }
+      if (!horizontal) return
+
+      const top = cards[((offset % n) + n) % n]
+      top.style.transition = 'none'
+      top.style.transform = `rotate(${dx / 28}deg) translate(${dx}px, ${Math.abs(dx) / 14}px)`
+    })
+
+    const release = (e: PointerEvent) => {
+      if (id !== e.pointerId) return
+      const dx = e.clientX - x0
+      const top = cards[((offset % n) + n) % n]
+      top.style.transition = ''
+      top.style.transform = ''
+      deck.classList.remove('dragging')
+      id = null
+      if (horizontal && Math.abs(dx) > 55) go(dx < 0 ? 1 : -1)
+      horizontal = null
+    }
+
+    deck.addEventListener('pointerup', release)
+    deck.addEventListener('pointercancel', release)
+
+    layout()
+  })
+</script>

@@ -59,12 +59,13 @@ export type Exhibition = {
   collaborators?: string
   statement?: any[]
   heroImage?: {asset?: {_ref?: string}}
+  heroVideo?: {asset?: {url?: string; mimeType?: string}}
   installationImages?: {asset?: {_ref?: string}}[]
 }
 
 const EXHIBITION_FIELDS = `
   _id, title, number, accent, bandText, year, dates, location, collaborators,
-  statement, heroImage, installationImages,
+  statement, heroImage, heroVideo{asset->{url, mimeType}}, "installationImages": installationImages[defined(asset)],
   "slug": slug.current
 `
 
@@ -111,7 +112,7 @@ export type Sketchbook = {
 
 export const getSketchbooks = () =>
   sanityClient.fetch<Sketchbook[]>(
-    `*[_type == "sketchbook"]|order(date desc){_id, title, date, sheets[]{_key, caption, asset}}`,
+    `*[_type == "sketchbook"]|order(date desc){_id, title, date, "sheets": sheets[defined(asset)]{_key, caption, asset}}`,
   )
 
 /** ISO date -> "12 MAR 2026", matching the uppercase mono captions in the design. */
@@ -124,15 +125,46 @@ export function formatDate(iso?: string): string {
     .toUpperCase()
 }
 
+export type HeroSlide = {
+  _key?: string
+  image?: {asset?: {_ref?: string}}
+  video?: {asset?: {url?: string; mimeType?: string}}
+  alt?: string
+  caption?: string
+}
+
 export type HomePage = {
-  portrait?: {asset?: {_ref?: string}}
-  portraitAlt?: string
-  portraitCaption?: string
+  track?: {asset?: {url?: string; mimeType?: string}}
+  introVideo?: {asset?: {url?: string; mimeType?: string}}
+  introPoster?: {asset?: {_ref?: string}}
+  heroSlides?: HeroSlide[]
   statementHeading?: string
   statement?: any[]
 }
 
 export const getHomePage = () =>
   sanityClient.fetch<HomePage | null>(
-    `*[_type == "homePage"][0]{portrait, portraitAlt, portraitCaption, statementHeading, statement}`,
+    `*[_type == "homePage"][0]{
+      track{asset->{url, mimeType}}, introVideo{asset->{url, mimeType}}, introPoster,
+      heroSlides[defined(image.asset)]{_key, image, video{asset->{url, mimeType}}, alt, caption},
+      statementHeading, statement
+    }`,
+  )
+
+export type EventItem = {
+  _id: string
+  title: string
+  slug: string
+  date?: string
+  location?: string
+  description?: any[]
+  images?: {_key?: string; asset?: {_ref?: string}}[]
+}
+
+export const getEvents = () =>
+  sanityClient.fetch<EventItem[]>(
+    `*[_type == "event" && defined(slug.current)]|order(order asc, date desc){
+      _id, title, date, location, description, images[defined(asset)]{_key, asset},
+      "slug": slug.current
+    }`,
   )

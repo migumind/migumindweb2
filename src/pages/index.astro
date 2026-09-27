@@ -2,6 +2,8 @@
 import {PortableText} from 'astro-portabletext'
 import Base from '../layouts/Base.astro'
 import ArtworkCard from '../components/ArtworkCard.astro'
+import HeroGallery from '../components/HeroGallery.astro'
+import EqBars from '../components/EqBars.astro'
 import {getArtworks, getExhibitions, getHomePage, getStudioEntries} from '../lib/sanity'
 import {ratioOf, urlFor} from '../lib/image'
 
@@ -12,62 +14,82 @@ const [home, artworks, exhibitions, studioEntries] = await Promise.all([
   getStudioEntries(),
 ])
 
+const slides = home?.heroSlides ?? []
 const featured = artworks.slice(0, 5)
 const SWATCHES = ['--vermilion', '--mustard', '--forest', '--lavender', '--cobalt']
+
+const introVideo = home?.introVideo?.asset?.url
+const introPoster = home?.introPoster
+  ? urlFor(home.introPoster).width(1800).fit('max').auto('format').url()
+  : undefined
 ---
 
 <Base title="Migumind — Miguel Pacheco | Artist &amp; Designer">
   <div class="page">
-    <div class="hero">
-      <h1 class="big">Migumind</h1>
-      <div class="row m m11">
-        <span>MIGUEL PACHECO</span>
-        <span>ARTIST / DESIGNER / CREATIVE</span>
-        <span>SYDNEY / AUSTRALIA</span>
-        <span class="push" style="display:flex;align-items:center;gap:12px">
-          <span class="swatchrow" style="width:132px;height:13px">
-            {SWATCHES.map((c) => <i style={`background:var(${c})`}></i>)}
-          </span>
-          2026
-        </span>
+    <section class="introhero" data-introhero>
+      <div class="bg">
+        {
+          introVideo ? (
+            <video
+              data-hero
+              data-bg
+              src={introVideo}
+              poster={introPoster}
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              aria-hidden="true"
+            />
+          ) : (
+            introPoster && <img src={introPoster} alt="" />
+          )
+        }
       </div>
 
-      <div class="opener-split">
-        <div>
-          {
-            home?.portrait ? (
-              <span class="frame" style={`aspect-ratio:${ratioOf(home.portrait, '2 / 3')}`}>
-                <img
-                  src={urlFor(home.portrait).width(1100).fit('max').auto('format').url()}
-                  alt={home.portraitAlt ?? 'Miguel Pacheco'}
-                />
-              </span>
-            ) : (
-              <div class="ph a23">
-                <span class="no">OPENING</span>
-                <span class="fn">ADD A PHOTO IN THE STUDIO</span>
-              </div>
-            )
-          }
-          {home?.portraitCaption && <div class="cap m dimmer" style="padding-top:9px">{home.portraitCaption}</div>}
+      <div class="over">
+        <h1 class="migu">Migu.</h1>
+
+        <div class="meta m m11">
+          <span>MIGUEL PACHECO</span>
+          <span>ARTIST / DESIGNER / CREATIVE</span>
+          <span>SYDNEY / AUSTRALIA</span>
         </div>
 
-        <div>
-          <h2 class="say">{home?.statementHeading ?? 'Painting, print and design are one practice'}</h2>
+        <h2 class="say">{home?.statementHeading ?? 'Painting, print and design are one practice'}</h2>
+
+        <div class="intro-copy">
           {
             home?.statement && home.statement.length > 0 ? (
-              <div class="richtext"><PortableText value={home.statement} /></div>
+              <PortableText value={home.statement} />
             ) : (
-              <p class="body">
+              <p>
                 A short paragraph in the artist's own words about how the studio moves between
                 canvas, press and screen. Add it on the Home page in the Studio.
               </p>
             )
           }
-          <div style="margin-top:20px"><a class="chip" href="/artworks">Enter the full archive →</a></div>
         </div>
+
+        <div class="ctarow">
+          <a class="chip" href="/artworks">Enter the full archive →</a>
+          <EqBars bars={18} height={20} />
+        </div>
+
+        <span class="swatchrow">
+          {SWATCHES.map((c) => <i style={`background:var(${c})`}></i>)}
+        </span>
       </div>
-    </div>
+    </section>
+
+    {
+      slides.length > 0 && (
+        <div class="gband">
+          <HeroGallery slides={slides} />
+        </div>
+      )
+    }
 
     {
       featured.length > 0 && (
@@ -145,3 +167,26 @@ const SWATCHES = ['--vermilion', '--mustard', '--forest', '--lavender', '--cobal
     </div>
   </div>
 </Base>
+
+<script>
+  // Carries the hero type from paper-white to vermilion as the hero leaves.
+  const hero = document.querySelector<HTMLElement>('[data-introhero]')
+  if (hero) {
+    let frame = 0
+    const update = () => {
+      const span = (hero.offsetHeight || 1) * 0.36
+      const t = Math.min(1, Math.max(0, window.scrollY / span))
+      hero.style.setProperty('--hero-fade', t.toFixed(3))
+    }
+    addEventListener(
+      'scroll',
+      () => {
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(update)
+      },
+      {passive: true},
+    )
+    addEventListener('resize', update, {passive: true})
+    update()
+  }
+</script>

@@ -1,0 +1,33 @@
+---
+interface Props {
+  bars?: number
+  height?: number
+  width?: number
+  gap?: number
+  class?: string
+}
+
+const {bars = 16, height = 22, width = 3, gap = 2, class: cls = ''} = Astro.props
+
+// The site's own accent set, cycled so the motif reads the same everywhere.
+const COLOURS = ['--vermilion', '--mustard', '--forest', '--lavender', '--cobalt', '--fluor', '--sage']
+
+// Deterministic so the server and browser agree, and so no two bars pulse alike.
+const restOf = (i: number) => (0.22 + ((i * 37) % 11) / 18).toFixed(2)
+const durOf = (i: number) => (0.72 + ((i * 53) % 13) / 16).toFixed(2)
+const delayOf = (i: number) => (((i * 29) % 17) / 22).toFixed(2)
+---
+
+<span
+  class={`eq ${cls}`}
+  style={`--eqh:${height}px;--eqw:${width}px;--eqgap:${gap}px`}
+  aria-hidden="true"
+>
+  {
+    Array.from({length: bars}, (_, i) => (
+      <i
+        style={`background:var(${COLOURS[i % COLOURS.length]});--rest:${restOf(i)};animation-duration:${durOf(i)}s;animation-delay:${delayOf(i)}s`}
+      />
+    ))
+  }
+</span>

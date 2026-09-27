@@ -1,5 +1,6 @@
 ---
 import '../styles/site.css'
+import VinylPlayer from '../components/VinylPlayer.astro'
 
 interface Props {
   title: string
@@ -12,6 +13,11 @@ const {
   description = 'Miguel Pacheco — artist and designer in Sydney. Painting, printmaking, live painting and graphic design. Artworks, exhibitions and studio archive.',
   section = '',
 } = Astro.props
+
+// Absolute URLs for metadata, driven by `site` in astro.config.mjs so the
+// domain lives in exactly one place.
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined
+const ogImage = Astro.site ? new URL('og-image.png', Astro.site).href : '/og-image.png'
 
 const NAV = [
   ['/artworks', 'Artworks', 'artworks'],
@@ -36,7 +42,9 @@ const NAV = [
     <meta property="og:site_name" content="MIGUMIND" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content="https://miguelpacheco.xyz/og-image.png" />
+    <meta property="og:image" content={ogImage} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -85,6 +93,8 @@ const NAV = [
     <main>
       <slot />
     </main>
+
+    <VinylPlayer />
 
     <footer class="ft">
       <div class="fw">Migumind</div>
@@ -138,6 +148,19 @@ const NAV = [
           localStorage.setItem('theme', next)
         } catch (e) {}
       })
+    </script>
+    <script is:inline>
+      // Motion that plays on its own needs a way out (WCAG 2.2.2), and
+      // reduced-motion users should not be given it at all.
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll('video[data-hero]').forEach(function (v) {
+          v.autoplay = false
+          v.loop = false
+          // A background video has no business showing controls; it just holds on its poster.
+          if (!v.hasAttribute('data-bg')) v.controls = true
+          v.pause()
+        })
+      }
     </script>
   </body>
 </html>

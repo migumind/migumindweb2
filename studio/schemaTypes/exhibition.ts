@@ -65,7 +65,19 @@ export default defineType({
       of: [{type: 'block'}],
       description: 'The exhibition statement, shown beside the hero image.',
     }),
-    defineField({name: 'heroImage', type: 'image', options: {hotspot: true}}),
+    defineField({
+      name: 'heroImage',
+      type: 'image',
+      options: {hotspot: true},
+      description: 'Also used as the poster frame if you add a hero video.',
+    }),
+    defineField({
+      name: 'heroVideo',
+      title: 'Hero video (optional)',
+      type: 'file',
+      options: {accept: 'video/*'},
+      description: 'Plays silently on a loop in place of the hero image. Keep it short and small.',
+    }),
     defineField({
       name: 'installationImages',
       title: 'Installation shots',

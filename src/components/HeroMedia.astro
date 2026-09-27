@@ -1,0 +1,39 @@
+---
+import {ratioOf, urlFor} from '../lib/image'
+
+interface Props {
+  image?: {asset?: {_ref?: string}}
+  video?: {asset?: {url?: string; mimeType?: string}}
+  alt?: string
+  width?: number
+  ratio?: string
+  contain?: boolean
+}
+
+const {image, video, alt = '', width = 1400, ratio = '3 / 2', contain = false} = Astro.props
+
+const videoUrl = video?.asset?.url
+const poster = image ? urlFor(image).width(width).fit('max').auto('format').url() : undefined
+const aspect = image ? ratioOf(image, ratio) : ratio
+const cls = contain ? 'frame contain' : 'frame'
+---
+
+<span class={cls} style={`aspect-ratio:${aspect}`}>
+  {
+    videoUrl ? (
+      <video
+        data-hero
+        src={videoUrl}
+        poster={poster}
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-label={alt}
+      />
+    ) : (
+      image && <img src={poster} alt={alt} />
+    )
+  }
+</span>
