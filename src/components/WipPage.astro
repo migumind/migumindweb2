@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro'
+
+// Placeholder for routes the nav links to before their content exists,
+// so visitors land on a page instead of a 404.
+interface Props {
+  title: string
+  heading: string
+  section: string
+  accent: string
+  inkOnAccent?: boolean
+  note: string
+}
+
+const {title, heading, section, accent, inkOnAccent = false, note} = Astro.props
+---
+
+<Base title={`${title} — Migumind`} section={section}>
+  <div class="page">
+    <div class="band" style={`--accent:${accent}${inkOnAccent ? ';color:var(--fixed-ink)' : ''}`}>
+      <h1 set:html={heading} />
+      <span class="sub m m11">WORK IN PROGRESS<br />MIGUMIND / 2026</span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk">
+        <div class="gateway">
+          <span class="status">In progress</span>
+          <p class="body" style="margin:0;max-width:52ch">{note}</p>
+          <a class="cta" href="/artworks">Browse artworks →</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</Base>
