@@ -1,0 +1,96 @@
+---
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import EventLogo from '../../components/EventLogo.astro'
+import MediaDeck from '../../components/MediaDeck.astro'
+import StickerWall from '../../components/StickerWall.astro'
+import {formatDate, getEvents, type EventItem} from '../../lib/sanity'
+import {resolveGeo} from '../../lib/cities'
+
+export async function getStaticPaths() {
+  const events = await getEvents()
+  return events.map((event, i) => ({
+    params: {slug: event.slug},
+    props: {event, index: i, prev: events[i - 1] ?? null, next: events[i + 1] ?? null},
+  }))
+}
+
+interface Props {
+  event: EventItem
+  index: number
+  prev: EventItem | null
+  next: EventItem | null
+}
+
+const {event: e, index, prev, next} = Astro.props
+const geo = resolveGeo(e)
+const city = [geo?.city, e.country].filter(Boolean).join(', ')
+// Seed each page's wall differently so no two events look identical.
+const wallSeed = [...e.slug].reduce((s, c) => s + c.charCodeAt(0), 0)
+---
+
+<Base title={`${e.title} — Events — Migumind`} section="events">
+  <div class="page">
+    <section class="evhero">
+      <StickerWall count={28} seed={wallSeed} />
+      <div class="evhero-logo">
+        <EventLogo title={e.title} style={e.logoStyle} seed={e.slug} sub={geo?.city} />
+      </div>
+      <span class="evhero-no m m11">EVENT_{String(index + 1).padStart(2, '0')}</span>
+    </section>
+
+    <div class="wrap">
+      <div class="evdetail">
+        <div>
+          <a class="m m11 dim evback" href="/events">← Globe + all events</a>
+          <h1 class="evtitle">{e.title}</h1>
+          <dl class="deflist">
+            {e.date && <div><dt>Date</dt><dd>{formatDate(e.date)}</dd></div>}
+            {e.location && <div><dt>Venue</dt><dd>{e.location}</dd></div>}
+            {city && <div><dt>City</dt><dd>{city}</dd></div>}
+          </dl>
+          {
+            e.description && e.description.length > 0 && (
+              <div class="richtext" style="margin-top:22px">
+                <PortableText value={e.description} />
+              </div>
+            )
+          }
+        </div>
+
+        <div class="evmedia">
+          {
+            e.images && e.images.length > 0 ? (
+              <MediaDeck images={e.images} alt={e.title} label={`${e.title} photographs`} />
+            ) : (
+              <div class="ph a43">
+                <span class="no">LIVE</span>
+                <span class="fn">ADD PHOTOGRAPHS IN THE STUDIO</span>
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      {
+        (prev || next) && (
+          <nav class="prevnext" aria-label="More events">
+            {prev ? (
+              <a href={`/events/${prev.slug}`}>
+                <span class="m dimmer">← NEWER</span>
+                <strong>{prev.title}</strong>
+              </a>
+            ) : <span />}
+            {next && (
+              <a href={`/events/${next.slug}`} style="text-align:right">
+                <span class="m dimmer">OLDER →</span>
+                <strong>{next.title}</strong>
+              </a>
+            )}
+          </nav>
+        )
+      }
+      <div style="height:clamp(40px,6vw,80px)"></div>
+    </div>
+  </div>
+</Base>

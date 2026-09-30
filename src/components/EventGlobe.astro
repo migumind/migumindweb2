@@ -1,0 +1,541 @@
+---
+import EventLogo from './EventLogo.astro'
+
+export type GlobePin = {
+  id: string
+  slug: string
+  title: string
+  city?: string
+  lat: number
+  lng: number
+  style?: string
+}
+
+interface Props {
+  pins: GlobePin[]
+}
+
+const {pins} = Astro.props
+const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng}))
+---
+
+<div
+  class="globe"
+  data-globe
+  data-pins={JSON.stringify(data)}
+  tabindex="0"
+  role="application"
+  aria-roledescription="interactive globe"
+  aria-label="Globe of event locations. Drag or use arrow keys to spin, scroll, pinch or plus and minus to zoom. Event pins are links."
+>
+  <canvas class="globe-canvas"></canvas>
+  <div class="globe-pins"></div>
+  <div class="globe-ctl">
+    <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+    <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+    <button type="button" data-zoom="reset" aria-label="Reset view">↺</button>
+  </div>
+  {
+    pins.map((p) => (
+      <template data-logo={p.id}>
+        <EventLogo title={p.title} style={p.style} seed={p.slug} />
+      </template>
+    ))
+  }
+</div>
+
+<script>
+  import {geoDistance, geoGraticule, geoInterpolate, geoOrthographic, geoPath} from 'd3-geo'
+  import {feature} from 'topojson-client'
+  import land110Topo from 'world-atlas/land-110m.json'
+  import land50Url from 'world-atlas/land-50m.json?url'
+
+  type Pin = {id: string; slug: string; city?: string; lat: number; lng: number}
+
+  // Two inks on paper, like a screenprinted globe. Fixed in both themes: it
+  // is a printed object, not UI chrome.
+  const OCEAN = '#3B5D42'
+  const INK_DARK = '#20382A'
+  const CREAM = '#E4E0D3'
+
+  const K_MIN = 1
+  const K_MAX = 14
+  const CLUSTER_PX = 46
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const clampK = (v: number) => Math.max(K_MIN, Math.min(K_MAX, v))
+  const clampLat = (v: number) => Math.max(-85, Math.min(85, v))
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-globe]')) init(root)
+
+  function init(root: HTMLElement) {
+    const canvas = root.querySelector('canvas')!
+    const layer = root.querySelector<HTMLElement>('.globe-pins')!
+    const ctx = canvas.getContext('2d')!
+    const pins: Pin[] = JSON.parse(root.dataset.pins || '[]')
+
+    const land110 = feature(land110Topo as any, (land110Topo as any).objects.land)
+    let land50: any = null
+    let land50Loading = false
+    const graticule = geoGraticule().step([15, 15])()
+
+    const proj = geoOrthographic().clipAngle(90).precision(0.6)
+    const path = geoPath(proj, ctx)
+
+    // View state: rotation as the [lng, lat] under the centre, plus zoom.
+    const home = homeView()
+    let center: [number, number] = [...home]
+    let k = 1
+    let W = 0
+    let H = 0
+    let R = 0
+    let dpr = 1
+
+    // ---------- textures ----------
+    const shade = document.createElement('canvas')
+    const sctx = shade.getContext('2d')!
+    let dotPattern: CanvasPattern | null = null
+    let grainPattern: CanvasPattern | null = null
+
+    function buildTextures() {
+      const t = document.createElement('canvas')
+      const s = Math.round(6 * dpr)
+      t.width = t.height = s
+      const tc = t.getContext('2d')!
+      tc.fillStyle = INK_DARK
+      tc.beginPath()
+      tc.arc(s / 2, s / 2, s * 0.26, 0, Math.PI * 2)
+      tc.fill()
+      dotPattern = sctx.createPattern(t, 'repeat')
+
+      const g = document.createElement('canvas')
+      g.width = g.height = 128
+      const gc = g.getContext('2d')!
+      const img = gc.createImageData(128, 128)
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = 200 + Math.random() * 55
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v
+        img.data[i + 3] = 255
+      }
+      gc.putImageData(img, 0, 0)
+      grainPattern = ctx.createPattern(g, 'repeat')
+    }
+
+    function resize() {
+      const rect = root.getBoundingClientRect()
+      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      W = rect.width
+      H = rect.height
+      canvas.width = shade.width = Math.round(W * dpr)
+      canvas.height = shade.height = Math.round(H * dpr)
+      R = (Math.min(W, H) / 2) * 0.86
+      buildTextures()
+      request()
+    }
+
+    // ---------- drawing ----------
+    let queued = false
+    function request() {
+      if (queued) return
+      queued = true
+      requestAnimationFrame(() => {
+        queued = false
+        draw()
+        layoutPins()
+      })
+    }
+
+    function draw() {
+      proj.scale(R * k).translate([W / 2, H / 2]).rotate([-center[0], -center[1]])
+      const r = R * k
+      const cx = W / 2
+      const cy = H / 2
+      // Zooming magnifies inside a round lens rather than filling the box, so
+      // it still reads as a globe sitting on the wall.
+      const lens = Math.min(r, R * 1.1)
+      const land = k >= 2 && land50 ? land50 : land110
+      if (k >= 2 && !land50) loadDetail()
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, W, H)
+
+      // Cream rim + soft lift off the sticker wall.
+      const rim = Math.max(3, R * 0.03)
+      ctx.save()
+      ctx.shadowColor = 'rgba(10,12,9,.45)'
+      ctx.shadowBlur = 28
+      ctx.shadowOffsetY = 10
+      ctx.beginPath()
+      ctx.arc(cx, cy, lens + rim, 0, Math.PI * 2)
+      ctx.fillStyle = CREAM
+      ctx.fill()
+      ctx.restore()
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, lens, 0, Math.PI * 2)
+      ctx.clip()
+
+      // Ocean
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.fillStyle = OCEAN
+      ctx.fill()
+
+      // Land, with its dark plate printed slightly off-register underneath.
+      ctx.save()
+      ctx.translate(1.6, 1.3)
+      ctx.beginPath()
+      path(land)
+      ctx.fillStyle = INK_DARK
+      ctx.fill()
+      ctx.restore()
+      ctx.beginPath()
+      path(land)
+      ctx.fillStyle = CREAM
+      ctx.fill()
+
+      // Graticule
+      ctx.beginPath()
+      path(graticule)
+      ctx.lineWidth = Math.min(2.4, 1.2 + k * 0.12)
+      ctx.strokeStyle = CREAM
+      ctx.stroke()
+
+      // Halftone shading: dots fade in toward the edge of the sphere.
+      sctx.setTransform(1, 0, 0, 1, 0, 0)
+      sctx.globalCompositeOperation = 'source-over'
+      sctx.clearRect(0, 0, shade.width, shade.height)
+      sctx.fillStyle = dotPattern!
+      sctx.fillRect(0, 0, shade.width, shade.height)
+      sctx.globalCompositeOperation = 'destination-in'
+      const g = sctx.createRadialGradient(
+        (cx - lens * 0.35) * dpr, (cy - lens * 0.4) * dpr, lens * 0.15 * dpr,
+        cx * dpr, cy * dpr, lens * 1.02 * dpr,
+      )
+      g.addColorStop(0, 'rgba(0,0,0,0)')
+      g.addColorStop(0.55, 'rgba(0,0,0,0.05)')
+      g.addColorStop(1, 'rgba(0,0,0,0.75)')
+      sctx.fillStyle = g
+      sctx.fillRect(0, 0, shade.width, shade.height)
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.clip()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(shade, 0, 0)
+      // Paper grain
+      ctx.globalCompositeOperation = 'multiply'
+      ctx.globalAlpha = 0.22
+      ctx.fillStyle = grainPattern!
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.restore()
+
+      ctx.restore()
+
+      // Inner rim line
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.beginPath()
+      ctx.arc(cx, cy, lens, 0, Math.PI * 2)
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = INK_DARK
+      ctx.stroke()
+    }
+
+    function loadDetail() {
+      if (land50Loading) return
+      land50Loading = true
+      fetch(land50Url)
+        .then((r) => r.json())
+        .then((topo) => {
+          land50 = feature(topo, topo.objects.land)
+          request()
+        })
+        .catch(() => {})
+    }
+
+    // ---------- pins + clustering ----------
+    const els = new Map<string, HTMLElement>()
+    let popover: HTMLElement | null = null
+    let popKey = ''
+
+    function logo(id: string) {
+      const t = root.querySelector<HTMLTemplateElement>(`template[data-logo="${id}"]`)
+      return t ? t.content.cloneNode(true) : document.createTextNode('')
+    }
+
+    function layoutPins() {
+      const c: [number, number] = [center[0], center[1]]
+      type Cl = {x: number; y: number; members: Pin[]; fade: number}
+      const clusters: Cl[] = []
+      for (const p of pins) {
+        const d = geoDistance([p.lng, p.lat], c)
+        if (d > Math.PI / 2 - 0.02) continue
+        const xy = proj([p.lng, p.lat])
+        if (!xy || Math.hypot(xy[0] - W / 2, xy[1] - H / 2) > Math.min(R * k, R * 1.1) - 4) continue
+        const fade = Math.min(1, (Math.PI / 2 - d) / 0.25)
+        const hit = clusters.find((cl) => Math.hypot(cl.x - xy[0], cl.y - xy[1]) < CLUSTER_PX)
+        if (hit) {
+          hit.members.push(p)
+          const n = hit.members.length
+          hit.x += (xy[0] - hit.x) / n
+          hit.y += (xy[1] - hit.y) / n
+          hit.fade = Math.max(hit.fade, fade)
+        } else clusters.push({x: xy[0], y: xy[1], members: [p], fade})
+      }
+
+      const live = new Set<string>()
+      for (const cl of clusters) {
+        const key = cl.members.map((m) => m.id).sort().join('|')
+        live.add(key)
+        let el = els.get(key)
+        if (!el) {
+          el = cl.members.length === 1 ? singlePin(cl.members[0]) : clusterPin(cl.members, key)
+          els.set(key, el)
+          layer.append(el)
+        }
+        el.style.transform = `translate(${cl.x.toFixed(1)}px, ${cl.y.toFixed(1)}px)`
+        el.style.opacity = cl.fade.toFixed(2)
+        el.style.pointerEvents = cl.fade < 0.3 ? 'none' : ''
+        if (popover && popKey === key) popover.style.transform = el.style.transform
+      }
+      for (const [key, el] of els) {
+        if (!live.has(key)) {
+          el.remove()
+          els.delete(key)
+          if (popKey === key) closePopover()
+        }
+      }
+    }
+
+    function singlePin(p: Pin) {
+      const a = document.createElement('a')
+      a.className = 'gpin'
+      a.href = `/events/${p.slug}`
+      a.innerHTML = '<span class="dot"></span><span class="lbl"></span>'
+      a.querySelector('.lbl')!.append(logo(p.id))
+      return a
+    }
+
+    function clusterPin(members: Pin[], key: string) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'gpin gcluster'
+      const cities = [...new Set(members.map((m) => m.city).filter(Boolean))] as string[]
+      const label = cities.length === 0 ? `${members.length} events` : cities.length === 1 ? cities[0] : `${cities[0]} +${cities.length - 1}`
+      b.setAttribute('aria-label', `${label}: ${members.length} events. Zoom in`)
+      b.innerHTML = `<span class="dot"><b>${members.length}</b></span><span class="lbl"><span class="ctag"></span></span>`
+      b.querySelector('.ctag')!.textContent = label
+      b.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const lat = members.reduce((s, m) => s + m.lat, 0) / members.length
+        const lng = meanLng(members.map((m) => m.lng))
+        const spread = Math.max(...members.map((m) => geoDistance([m.lng, m.lat], [lng, lat])))
+        // Zoom until they separate; pins at the same spot can never separate,
+        // so those (or anything at max zoom) open a list instead.
+        if (spread < 1e-4 || k >= K_MAX * 0.95) return openPopover(members, key)
+        const target = Math.min(K_MAX, Math.max(k * 2.6, 0.9 / (spread * 8)))
+        animateTo([lng, lat], target)
+      })
+      return b
+    }
+
+    function openPopover(members: Pin[], key: string) {
+      closePopover()
+      popKey = key
+      popover = document.createElement('div')
+      popover.className = 'gpop'
+      popover.innerHTML = '<div class="gpop-card"></div>'
+      const card = popover.firstElementChild!
+      for (const m of members) {
+        const a = document.createElement('a')
+        a.href = `/events/${m.slug}`
+        a.append(logo(m.id))
+        card.append(a)
+      }
+      popover.style.transform = els.get(key)?.style.transform ?? ''
+      layer.append(popover)
+      ;(card.querySelector('a') as HTMLElement | null)?.focus()
+    }
+
+    function closePopover() {
+      popover?.remove()
+      popover = null
+      popKey = ''
+    }
+
+    // ---------- motion ----------
+    let anim = 0
+    function animateTo(to: [number, number], toK: number, ms = 900) {
+      cancelAnimationFrame(anim)
+      if (reduceMotion) ms = 1
+      const interp = geoInterpolate(center, to)
+      const fromK = k
+      const t0 = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - t0) / ms)
+        const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+        center = interp(e) as [number, number]
+        k = fromK * Math.pow(toK / fromK, e)
+        request()
+        if (t < 1) anim = requestAnimationFrame(step)
+      }
+      anim = requestAnimationFrame(step)
+    }
+
+    function zoomBy(f: number) {
+      animateTo(center, clampK(k * f), 320)
+    }
+
+    // Degrees of rotation per pixel dragged, so the land under the finger
+    // roughly follows it at any zoom.
+    const degPerPx = () => 180 / Math.PI / (R * k)
+
+    const pointers = new Map<number, {x: number; y: number}>()
+    let dragging = false
+    let moved = 0
+    let pinch: {d: number; k: number} | null = null
+    let vel = {x: 0, y: 0, t: 0}
+    let inertia = 0
+
+    root.addEventListener('pointerdown', (e) => {
+      if ((e.target as Element).closest('.gpin, .gpop, .globe-ctl')) return
+      closePopover()
+      cancelAnimationFrame(anim)
+      cancelAnimationFrame(inertia)
+      root.setPointerCapture(e.pointerId)
+      pointers.set(e.pointerId, {x: e.clientX, y: e.clientY})
+      dragging = true
+      moved = 0
+      vel = {x: 0, y: 0, t: performance.now()}
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()]
+        pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), k}
+      }
+      root.classList.add('grabbing')
+    })
+
+    root.addEventListener('pointermove', (e) => {
+      const prev = pointers.get(e.pointerId)
+      if (!prev || !dragging) return
+      const cur = {x: e.clientX, y: e.clientY}
+      pointers.set(e.pointerId, cur)
+      if (pointers.size === 2 && pinch) {
+        const [a, b] = [...pointers.values()]
+        k = clampK((pinch.k * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d)
+        request()
+        return
+      }
+      const dx = cur.x - prev.x
+      const dy = cur.y - prev.y
+      moved += Math.abs(dx) + Math.abs(dy)
+      const s = degPerPx()
+      center = [center[0] - dx * s, clampLat(center[1] + dy * s)]
+      const now = performance.now()
+      const dt = Math.max(1, now - vel.t)
+      vel = {x: (dx / dt) * 0.8 + vel.x * 0.2, y: (dy / dt) * 0.8 + vel.y * 0.2, t: now}
+      request()
+    })
+
+    const end = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) return
+      pointers.delete(e.pointerId)
+      if (pointers.size < 2) pinch = null
+      if (pointers.size > 0) return
+      dragging = false
+      root.classList.remove('grabbing')
+      // Fling: keep spinning and ease to a stop.
+      if (!reduceMotion && performance.now() - vel.t < 80 && moved > 6) {
+        let vx = vel.x
+        let vy = vel.y
+        let last = performance.now()
+        const coast = (now: number) => {
+          const dt = now - last
+          last = now
+          const s = degPerPx()
+          center = [center[0] - vx * dt * s, clampLat(center[1] + vy * dt * s)]
+          const decay = Math.pow(0.94, dt / 16)
+          vx *= decay
+          vy *= decay
+          request()
+          if (Math.abs(vx) + Math.abs(vy) > 0.01) inertia = requestAnimationFrame(coast)
+        }
+        inertia = requestAnimationFrame(coast)
+      }
+    }
+    root.addEventListener('pointerup', end)
+    root.addEventListener('pointercancel', end)
+
+    // Scroll zooms in; once fully zoomed out, scrolling down goes back to
+    // scrolling the page, so the globe never traps you.
+    root.addEventListener(
+      'wheel',
+      (e) => {
+        if (e.deltaY > 0 && k <= K_MIN + 0.001) return
+        e.preventDefault()
+        cancelAnimationFrame(anim)
+        k = clampK(k * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0022)))
+        request()
+      },
+      {passive: false},
+    )
+
+    root.addEventListener('keydown', (e) => {
+      if (e.target !== root) return
+      const s = 12 / k
+      const moves: Record<string, () => void> = {
+        ArrowLeft: () => (center = [center[0] - s, center[1]]),
+        ArrowRight: () => (center = [center[0] + s, center[1]]),
+        ArrowUp: () => (center = [center[0], clampLat(center[1] + s)]),
+        ArrowDown: () => (center = [center[0], clampLat(center[1] - s)]),
+        '+': () => zoomBy(1.6),
+        '=': () => zoomBy(1.6),
+        '-': () => zoomBy(1 / 1.6),
+        '0': () => animateTo(home, 1),
+      }
+      const fn = moves[e.key]
+      if (!fn) return
+      e.preventDefault()
+      fn()
+      request()
+    })
+
+    root.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const z = b.dataset.zoom
+        if (z === 'in') zoomBy(1.8)
+        else if (z === 'out') zoomBy(1 / 1.8)
+        else animateTo(home, 1)
+      }),
+    )
+
+    document.addEventListener('click', (e) => {
+      if (popover && !(e.target as Element).closest('.gpop, .gcluster')) closePopover()
+    })
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePopover()
+    })
+
+    function homeView(): [number, number] {
+      if (!pins.length) return [134, -10]
+      const lat = pins.reduce((s, p) => s + p.lat, 0) / pins.length
+      // Sit the pins a little below centre so their labels have room above.
+      return [meanLng(pins.map((p) => p.lng)), clampLat(lat + 12)]
+    }
+
+    new ResizeObserver(resize).observe(root)
+    resize()
+    // Arrive with a short spin into place.
+    if (!reduceMotion) {
+      center = [home[0] + 70, home[1] - 10]
+      k = 0.9
+      animateTo(home, 1, 1500)
+    }
+  }
+
+  function meanLng(lngs: number[]) {
+    const x = lngs.reduce((s, l) => s + Math.cos((l * Math.PI) / 180), 0)
+    const y = lngs.reduce((s, l) => s + Math.sin((l * Math.PI) / 180), 0)
+    return (Math.atan2(y, x) * 180) / Math.PI
+  }
+</script>

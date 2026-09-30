@@ -157,6 +157,10 @@ export type EventItem = {
   slug: string
   date?: string
   location?: string
+  city?: string
+  country?: string
+  coordinates?: {lat?: number; lng?: number}
+  logoStyle?: string
   description?: any[]
   images?: {_key?: string; asset?: {_ref?: string}}[]
 }
@@ -164,10 +168,16 @@ export type EventItem = {
 export const getEvents = () =>
   sanityClient.fetch<EventItem[]>(
     `*[_type == "event" && defined(slug.current)]|order(order asc, date desc){
-      _id, title, date, location, description, images[defined(asset)]{_key, asset},
+      _id, title, date, location, city, country, coordinates, logoStyle, description,
+      images[defined(asset)]{_key, asset},
       "slug": slug.current
     }`,
   )
+
+export type Sticker = {_key?: string; asset?: {_ref?: string}; size?: number}
+
+export const getStickers = () =>
+  sanityClient.fetch<Sticker[] | null>(`*[_id == "stickerSheet"][0].stickers[defined(asset)]{_key, asset, size}`)
 
 export type DesignProject = {
   _id: string

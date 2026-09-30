@@ -1,0 +1,80 @@
+---
+// A sticker-bombed wall: stickers from the studio ("Event stickers"), or the
+// built-in set when none are uploaded. Layout is seeded, so it is the same on
+// every build and never shifts between server and browser.
+import {getStickers} from '../lib/sanity'
+import {urlFor} from '../lib/image'
+import DEFAULTS from '../lib/stickers.json'
+
+interface Props {
+  /** How many stickers to place. They repeat when there are fewer uploads. */
+  count?: number
+  seed?: number
+  class?: string
+}
+
+const {count = 42, seed = 7, class: cls = ''} = Astro.props
+
+const uploaded = (await getStickers()) ?? []
+const set = uploaded.length
+  ? uploaded.map((s) => {
+      const m = s.asset?._ref?.match(/-(\d+)x(\d+)-[a-z]+$/)
+      const w = m ? +m[1] : 400
+      const h = m ? +m[2] : 300
+      return {src: urlFor(s).width(480).fit('max').auto('format').url(), w, h, size: s.size ?? 1}
+    })
+  : DEFAULTS.map((d) => ({...d, size: 1}))
+
+// mulberry32
+let a = seed >>> 0
+const rand = () => {
+  a = (a + 0x6d2b79f5) >>> 0
+  let t = a
+  t = Math.imul(t ^ (t >>> 15), t | 1)
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+
+// Shuffle once, then deal round-robin so neighbours differ.
+const order = set.map((_, i) => i).sort(() => rand() - 0.5)
+const cols = 7
+const rows = Math.ceil(count / cols)
+const placed = Array.from({length: count}, (_, i) => {
+  const s = set[order[i % order.length]]
+  const col = i % cols
+  const row = Math.floor(i / cols)
+  // Jittered grid: covers the wall evenly but still reads as random.
+  const x = ((col + 0.5 + (rand() - 0.5) * 0.9) / cols) * 100
+  const y = ((row + 0.5 + (rand() - 0.5) * 0.9) / rows) * 100
+  const long = Math.max(s.w, s.h)
+  const scale = (0.75 + rand() * 0.55) * s.size
+  return {
+    ...s,
+    x,
+    y,
+    rot: Math.round((rand() - 0.5) * 36),
+    // Width in "sticker units": the longest side maps to ~1 unit.
+    wu: ((s.w / long) * scale).toFixed(3),
+    z: Math.floor(rand() * 100),
+    peel: rand() < 0.14,
+  }
+})
+---
+
+<div class={`stickerwall ${cls}`} aria-hidden="true">
+  {
+    placed.map((p) => (
+      <img
+        src={p.src}
+        width={p.w}
+        height={p.h}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        draggable="false"
+        class={p.peel ? 'peel' : undefined}
+        style={`left:${p.x.toFixed(2)}%;top:${p.y.toFixed(2)}%;--wu:${p.wu};--r:${p.rot}deg;z-index:${p.z}`}
+      />
+    ))
+  }
+</div>
