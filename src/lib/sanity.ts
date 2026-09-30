@@ -176,6 +176,11 @@ export const getEvents = () =>
 
 export type Sticker = {_key?: string; asset?: {_ref?: string}; size?: number}
 
+export type EventsPage = {globeStyle?: string; globePalette?: string}
+
+export const getEventsPage = () =>
+  sanityClient.fetch<EventsPage | null>(`*[_id == "stickerSheet"][0]{globeStyle, globePalette}`)
+
 export const getStickers = () =>
   sanityClient.fetch<Sticker[] | null>(`*[_id == "stickerSheet"][0].stickers[defined(asset)]{_key, asset, size}`)
 

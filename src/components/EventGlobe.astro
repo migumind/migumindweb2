@@ -13,9 +13,13 @@ export type GlobePin = {
 
 interface Props {
   pins: GlobePin[]
+  /** detailed | angular | blocks | dots */
+  mapStyle?: string
+  /** forest | sage | paper | chrome */
+  palette?: string
 }
 
-const {pins} = Astro.props
+const {pins, mapStyle = 'angular', palette = 'sage'} = Astro.props
 const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng}))
 ---
 
@@ -23,6 +27,8 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
   class="globe"
   data-globe
   data-pins={JSON.stringify(data)}
+  data-map-style={mapStyle}
+  data-palette={palette}
   tabindex="0"
   role="application"
   aria-roledescription="interactive globe"
@@ -47,16 +53,36 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
 <script>
   import {geoDistance, geoGraticule, geoInterpolate, geoOrthographic, geoPath} from 'd3-geo'
   import {feature} from 'topojson-client'
+  import {filter, filterWeight, presimplify, quantile, simplify, sphericalRingArea, sphericalTriangleArea} from 'topojson-simplify'
   import land110Topo from 'world-atlas/land-110m.json'
   import land50Url from 'world-atlas/land-50m.json?url'
+  import landGrid from '../lib/landgrid.json'
 
   type Pin = {id: string; slug: string; city?: string; lat: number; lng: number}
 
   // Two inks on paper, like a screenprinted globe. Fixed in both themes: it
-  // is a printed object, not UI chrome.
-  const OCEAN = '#3B5D42'
-  const INK_DARK = '#20382A'
-  const CREAM = '#E4E0D3'
+  // is a printed object, not UI chrome. `dark` is the second plate: halftone
+  // shading, the off-register land shadow and the rim line.
+  type Palette = {ocean: string; land: string; dark: string; grid: string; rim: string; shade: number; gridAlpha: number}
+  const PALETTES: Record<string, Palette> = {
+    forest: {ocean: '#3B5D42', land: '#E4E0D3', dark: '#20382A', grid: '#E4E0D3', rim: '#E4E0D3', shade: 0.75, gridAlpha: 1},
+    sage: {ocean: '#86A78D', land: '#F2EFE6', dark: '#4F7058', grid: '#F2EFE6', rim: '#F2EFE6', shade: 0.55, gridAlpha: 0.85},
+    paper: {ocean: '#EEEADF', land: '#4E7456', dark: '#A9A38F', grid: '#C8C2AE', rim: '#EEEADF', shade: 0.4, gridAlpha: 1},
+    chrome: {ocean: '#B4BAB6', land: '#F4F4F0', dark: '#6F7772', grid: '#E6E8E4', rim: '#EDEEEA', shade: 0.6, gridAlpha: 0.8},
+  }
+
+  // Land as a 2° grid (precomputed by scripts/landgrid.mjs) for the blocky
+  // and dot-matrix styles.
+  const LAND_CELLS: [number, number][] = (() => {
+    const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    const {step, cols, rows, bits} = landGrid as {step: number; cols: number; rows: number; bits: string}
+    const out: [number, number][] = []
+    for (let i = 0; i < cols * rows; i++) {
+      const v = A.indexOf(bits[Math.floor(i / 6)])
+      if ((v >> (5 - (i % 6))) & 1) out.push([-180 + step * ((i % cols) + 0.5), 90 - step * (Math.floor(i / cols) + 0.5)])
+    }
+    return out
+  })()
 
   const K_MIN = 1
   const K_MAX = 14
@@ -73,12 +99,21 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     const ctx = canvas.getContext('2d')!
     const pins: Pin[] = JSON.parse(root.dataset.pins || '[]')
 
+    // ?globe=dots&palette=paper previews other looks without touching the studio.
+    const q = new URLSearchParams(location.search)
+    const mapStyle = q.get('globe') || root.dataset.mapStyle || 'angular'
+    const P = PALETTES[q.get('palette') || root.dataset.palette || 'sage'] ?? PALETTES.sage
+
     const land110 = feature(land110Topo as any, (land110Topo as any).objects.land)
+    const landAngular = mapStyle === 'angular' ? angularLand() : null
+    const blocks = mapStyle === 'blocks' ? blockLand() : null
+    const dots = mapStyle === 'dots' ? LAND_CELLS : null
     let land50: any = null
     let land50Loading = false
     const graticule = geoGraticule().step([15, 15])()
 
-    const proj = geoOrthographic().clipAngle(90).precision(0.6)
+    // Angular: no curve resampling, so every edge is a straight cut.
+    const proj = geoOrthographic().clipAngle(90).precision(mapStyle === 'angular' ? 40 : 0.6)
     const path = geoPath(proj, ctx)
 
     // View state: rotation as the [lng, lat] under the centre, plus zoom.
@@ -101,7 +136,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       const s = Math.round(6 * dpr)
       t.width = t.height = s
       const tc = t.getContext('2d')!
-      tc.fillStyle = INK_DARK
+      tc.fillStyle = P.dark
       tc.beginPath()
       tc.arc(s / 2, s / 2, s * 0.26, 0, Math.PI * 2)
       tc.fill()
@@ -152,8 +187,9 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       // Zooming magnifies inside a round lens rather than filling the box, so
       // it still reads as a globe sitting on the wall.
       const lens = Math.min(r, R * 1.1)
-      const land = k >= 2 && land50 ? land50 : land110
-      if (k >= 2 && !land50) loadDetail()
+      const detailed = mapStyle === 'detailed'
+      const land = landAngular ?? (detailed && k >= 2 && land50 ? land50 : land110)
+      if (detailed && k >= 2 && !land50) loadDetail()
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, W, H)
@@ -166,7 +202,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       ctx.shadowOffsetY = 10
       ctx.beginPath()
       ctx.arc(cx, cy, lens + rim, 0, Math.PI * 2)
-      ctx.fillStyle = CREAM
+      ctx.fillStyle = P.rim
       ctx.fill()
       ctx.restore()
 
@@ -178,28 +214,30 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       // Ocean
       ctx.beginPath()
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.fillStyle = OCEAN
+      ctx.fillStyle = P.ocean
       ctx.fill()
 
-      // Land, with its dark plate printed slightly off-register underneath.
-      ctx.save()
-      ctx.translate(1.6, 1.3)
-      ctx.beginPath()
-      path(land)
-      ctx.fillStyle = INK_DARK
-      ctx.fill()
-      ctx.restore()
-      ctx.beginPath()
-      path(land)
-      ctx.fillStyle = CREAM
-      ctx.fill()
+      // For tiles and dots the grid goes underneath, so the land sits on top.
+      const grid = () => {
+        ctx.beginPath()
+        path(graticule)
+        ctx.lineWidth = Math.min(2.4, 1.2 + k * 0.12)
+        ctx.strokeStyle = P.grid
+        ctx.globalAlpha = P.gridAlpha
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
 
-      // Graticule
-      ctx.beginPath()
-      path(graticule)
-      ctx.lineWidth = Math.min(2.4, 1.2 + k * 0.12)
-      ctx.strokeStyle = CREAM
-      ctx.stroke()
+      if (dots) {
+        grid()
+        drawDots(dots, r)
+      } else if (blocks) {
+        grid()
+        plate(blocks)
+      } else {
+        plate(land)
+        grid()
+      }
 
       // Halftone shading: dots fade in toward the edge of the sphere.
       sctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -214,7 +252,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       )
       g.addColorStop(0, 'rgba(0,0,0,0)')
       g.addColorStop(0.55, 'rgba(0,0,0,0.05)')
-      g.addColorStop(1, 'rgba(0,0,0,0.75)')
+      g.addColorStop(1, `rgba(0,0,0,${P.shade})`)
       sctx.fillStyle = g
       sctx.fillRect(0, 0, shade.width, shade.height)
 
@@ -238,8 +276,46 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       ctx.beginPath()
       ctx.arc(cx, cy, lens, 0, Math.PI * 2)
       ctx.lineWidth = 1.5
-      ctx.strokeStyle = INK_DARK
+      ctx.strokeStyle = P.dark
       ctx.stroke()
+    }
+
+    // Land fill, with its dark plate printed slightly off-register underneath.
+    function plate(geo: any) {
+      ctx.save()
+      ctx.translate(1.6, 1.3)
+      ctx.beginPath()
+      path(geo)
+      ctx.fillStyle = P.dark
+      ctx.fill()
+      ctx.restore()
+      ctx.beginPath()
+      path(geo)
+      ctx.fillStyle = P.land
+      ctx.fill()
+    }
+
+    function drawDots(cells: [number, number][], r: number) {
+      const c: [number, number] = [center[0], center[1]]
+      const base = r * ((landGrid.step * Math.PI) / 180) * 0.44
+      const face = new Path2D()
+      const shadow = new Path2D()
+      for (const p of cells) {
+        const d = geoDistance(p, c)
+        if (d > Math.PI / 2) continue
+        const xy = proj(p)
+        if (!xy) continue
+        // Shrink toward the edge, like dots printed on a curved surface.
+        const rad = base * Math.sqrt(Math.cos(d))
+        face.moveTo(xy[0] + rad, xy[1])
+        face.arc(xy[0], xy[1], rad, 0, Math.PI * 2)
+        shadow.moveTo(xy[0] + rad + 1.2, xy[1] + 1)
+        shadow.arc(xy[0] + 1.2, xy[1] + 1, rad, 0, Math.PI * 2)
+      }
+      ctx.fillStyle = P.dark
+      ctx.fill(shadow)
+      ctx.fillStyle = P.land
+      ctx.fill(face)
     }
 
     function loadDetail() {
@@ -526,11 +602,41 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     new ResizeObserver(resize).observe(root)
     resize()
     // Arrive with a short spin into place.
-    if (!reduceMotion) {
+    if (!reduceMotion && !q.get('globe')) {
       center = [home[0] + 70, home[1] - 10]
       k = 0.9
       animateTo(home, 1, 1500)
     }
+  }
+
+  // Low-poly continents: keep only the most significant ~7% of
+  // coastline points and drop small islands, so shapes read as cut paper.
+  function angularLand() {
+    const topo = presimplify(JSON.parse(JSON.stringify(land110Topo)), sphericalTriangleArea)
+    const kept = simplify(topo, quantile(topo, 0.07))
+    const trimmed = filter(kept, filterWeight(kept, 1.2e-3, sphericalRingArea))
+    return feature(trimmed as any, (trimmed as any).objects.land)
+  }
+
+  // Land as 4° tiles with a gap between them: a blocky pixel map.
+  function blockLand() {
+    const S = 4
+    const seen = new Set<string>()
+    const polys: [number, number][][][] = []
+    const gap = 0.45
+    for (const [lng, lat] of LAND_CELLS) {
+      const x = Math.floor((lng + 180) / S)
+      const y = Math.floor((lat + 90) / S)
+      const key = x + ',' + y
+      if (seen.has(key)) continue
+      seen.add(key)
+      const x0 = -180 + x * S + gap
+      const x1 = -180 + (x + 1) * S - gap
+      const y0 = -90 + y * S + gap
+      const y1 = -90 + (y + 1) * S - gap
+      polys.push([[[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]])
+    }
+    return {type: 'MultiPolygon', coordinates: polys}
   }
 
   function meanLng(lngs: number[]) {

@@ -24,7 +24,7 @@ export default defineConfig({
               .id('homePage')
               .child(S.document().schemaType('homePage').documentId('homePage')),
             S.listItem()
-              .title('Event stickers')
+              .title('Events page')
               .id('stickerSheet')
               .child(S.document().schemaType('stickerSheet').documentId('stickerSheet')),
             S.divider(),

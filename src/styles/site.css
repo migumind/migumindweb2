@@ -502,8 +502,25 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .stickerwall img.peel{filter:drop-shadow(3px 6px 4px rgba(0,0,0,.35));transform:translate(-50%,-50%) rotate(var(--r)) perspective(400px) rotateX(10deg)}
 @media(max-width:640px){.stickerwall{--sz:clamp(84px,24vw,120px)}.stickerwall img:nth-child(3n){display:none}}
 
+/* ============ metal (street pole behind the stickers) ============ */
+/* Layers, top to bottom: joint seams, cylindrical sheen, grime, brushed tile
+   (public/events/metal.webp, from scripts/metal.cjs). */
+.metal{background-color:#9EA29C;
+  background-image:
+    repeating-linear-gradient(180deg,transparent 0 560px,rgba(0,0,0,.3) 560px 562px,rgba(255,255,255,.4) 562px 564px,rgba(0,0,0,.08) 564px 572px,transparent 572px 1120px),
+    linear-gradient(90deg,rgba(0,0,0,.38),rgba(255,255,255,.2) 11%,rgba(0,0,0,.05) 24%,rgba(255,255,255,.34) 42%,rgba(255,255,255,.1) 50%,rgba(0,0,0,.12) 66%,rgba(255,255,255,.16) 82%,rgba(0,0,0,.4)),
+    radial-gradient(ellipse 40% 30% at 12% 88%,rgba(70,58,36,.22),transparent),
+    radial-gradient(ellipse 35% 25% at 86% 18%,rgba(70,58,36,.16),transparent),
+    url(/events/metal.webp);
+  background-size:auto,100% 100%,100% 100%,100% 100%,512px 512px}
+.metal::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  box-shadow:inset 0 0 120px rgba(0,0,0,.35)}
+/* Scraps of stickers someone tore off. */
+.stickerwall .scrap{position:absolute;background:#F1EFE8;opacity:.8;transform:translate(-50%,-50%) rotate(var(--r));
+  box-shadow:0 1px 1px rgba(0,0,0,.2)}
+
 /* ============ events: globe stage ============ */
-.evstage{position:relative;overflow:hidden;background:#8D918A;padding:clamp(20px,4vw,52px) var(--pad) clamp(18px,3vw,34px);
+.evstage{position:relative;overflow:hidden;padding:clamp(20px,4vw,52px) var(--pad) clamp(18px,3vw,34px);
   display:flex;flex-direction:column;align-items:center}
 .evstage-globe{position:relative;z-index:1;width:min(100%,76vh,820px)}
 .evstage-hint{position:relative;z-index:1;background:var(--fixed-ink);color:var(--fixed-paper);padding:7px 11px;margin:clamp(8px,1.5vw,16px) 0 0;transform:rotate(-1deg)}
@@ -560,7 +577,7 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 }
 
 /* ============ events: detail ============ */
-.evhero{position:relative;overflow:hidden;background:#8D918A;min-height:clamp(240px,40vh,440px);display:grid;place-items:center;padding:40px var(--pad)}
+.evhero{position:relative;overflow:hidden;min-height:clamp(240px,40vh,440px);display:grid;place-items:center;padding:40px var(--pad)}
 .evhero-logo{position:relative;z-index:1;font-size:clamp(24px,5.4vw,64px);filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));transform:rotate(-2deg)}
 .evhero-no{position:absolute;z-index:1;left:var(--pad);bottom:14px;background:var(--fixed-ink);color:var(--fixed-paper);padding:6px 10px}
 .evdetail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:clamp(24px,5vw,72px);padding-block:clamp(28px,4vw,56px);align-items:start}

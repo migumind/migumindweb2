@@ -59,9 +59,34 @@ const placed = Array.from({length: count}, (_, i) => {
     peel: rand() < 0.14,
   }
 })
+
+// Torn-off sticker residue: small off-white scraps with ragged edges.
+const scraps = Array.from({length: Math.round(count / 5)}, () => {
+  const pts = Array.from({length: 7}, (_, i) => {
+    const a = (i / 7) * Math.PI * 2
+    const d = 34 + rand() * 16
+    return `${(50 + Math.cos(a) * d).toFixed(0)}% ${(50 + Math.sin(a) * d).toFixed(0)}%`
+  })
+  return {
+    x: (rand() * 100).toFixed(1),
+    y: (rand() * 100).toFixed(1),
+    w: Math.round(18 + rand() * 46),
+    h: Math.round(10 + rand() * 30),
+    rot: Math.round((rand() - 0.5) * 60),
+    clip: `polygon(${pts.join(',')})`,
+  }
+})
 ---
 
 <div class={`stickerwall ${cls}`} aria-hidden="true">
+  {
+    scraps.map((s) => (
+      <span
+        class="scrap"
+        style={`left:${s.x}%;top:${s.y}%;width:${s.w}px;height:${s.h}px;--r:${s.rot}deg;clip-path:${s.clip}`}
+      />
+    ))
+  }
   {
     placed.map((p) => (
       <img

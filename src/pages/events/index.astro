@@ -3,10 +3,11 @@ import Base from '../../layouts/Base.astro'
 import EventGlobe from '../../components/EventGlobe.astro'
 import EventLogo from '../../components/EventLogo.astro'
 import StickerWall from '../../components/StickerWall.astro'
-import {formatDate, getEvents} from '../../lib/sanity'
+import {formatDate, getEvents, getEventsPage} from '../../lib/sanity'
 import {resolveGeo} from '../../lib/cities'
 
 const events = await getEvents()
+const settings = await getEventsPage()
 const placed = events.map((e) => ({e, geo: resolveGeo(e)}))
 const pins = placed
   .filter((p) => p.geo)
@@ -24,10 +25,10 @@ const pins = placed
       </span>
     </div>
 
-    <section class="evstage">
+    <section class="evstage metal">
       <StickerWall count={49} />
       <div class="evstage-globe">
-        <EventGlobe pins={pins} />
+        <EventGlobe pins={pins} mapStyle={settings?.globeStyle} palette={settings?.globePalette} />
       </div>
       <p class="evstage-hint m m11">Drag to spin — scroll or pinch to zoom — tap a pin</p>
     </section>

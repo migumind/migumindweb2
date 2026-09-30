@@ -31,7 +31,7 @@ const wallSeed = [...e.slug].reduce((s, c) => s + c.charCodeAt(0), 0)
 
 <Base title={`${e.title} — Events — Migumind`} section="events">
   <div class="page">
-    <section class="evhero">
+    <section class="evhero metal">
       <StickerWall count={28} seed={wallSeed} />
       <div class="evhero-logo">
         <EventLogo title={e.title} style={e.logoStyle} seed={e.slug} sub={geo?.city} />
