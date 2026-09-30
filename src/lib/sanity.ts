@@ -168,3 +168,25 @@ export const getEvents = () =>
       "slug": slug.current
     }`,
   )
+
+export type DesignProject = {
+  _id: string
+  title: string
+  slug: string
+  client?: string
+  category?: string
+  year?: string
+  image?: {asset?: {_ref?: string}}
+  description?: any[]
+  gallery?: {_key?: string; asset?: {_ref?: string}}[]
+  link?: string
+}
+
+export const getDesignProjects = () =>
+  sanityClient.fetch<DesignProject[]>(
+    `*[_type == "designProject" && defined(slug.current)]|order(coalesce(order, 9999) asc, year desc, title asc){
+      _id, title, client, category, year, image, description, link,
+      "gallery": gallery[defined(asset)]{_key, asset},
+      "slug": slug.current
+    }`,
+  )

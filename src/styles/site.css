@@ -429,3 +429,32 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .fader input[type=range]:focus-visible{outline:2px solid var(--vermilion);outline-offset:3px}
 @media(max-width:520px){.djpanel{width:138px}}
 .ctarow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
+
+/* ============ graphic design ============ */
+.folio{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.folio summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:clamp(14px,2.2vw,24px) 0;transition:padding-left .18s}
+.folio summary::-webkit-details-marker{display:none}
+.folio summary:hover{padding-left:12px}
+.folio summary .t{font-variation-settings:"wdth" 110,"wght" 800;font-size:clamp(22px,3.6vw,42px);line-height:.95;letter-spacing:-.028em;text-transform:uppercase}
+.folio .hint .close,.folio[open] .hint .open{display:none}
+.folio[open] .hint .close{display:inline}
+.folio-body{padding-bottom:clamp(20px,3vw,36px);display:flex;flex-direction:column;align-items:center;gap:18px}
+.folio-body img{display:block;width:100%;max-width:1100px;height:auto;border:1px solid var(--rule);background:var(--paper-2)}
+.folio-close{border:1px solid var(--ink);padding:8px 14px}
+.folio-close:hover{background:var(--ink);color:var(--paper)}
+
+.comm{gap:12px}
+.comm .richtext{font-size:14px;color:var(--ink-2)}
+.comm .richtext p{margin:0 0 10px}
+.comm-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.comm-gallery .frame img{width:100%;height:100%;object-fit:cover;display:block}
+.comm.tpl{opacity:.7}
+.comm.tpl h3,.comm.tpl .under,.comm.tpl .sm{color:var(--ink-3)}
+
+/* Corner book flip, carried over from the 2024 portfolio site. Bottom-left so it
+   clears the vinyl player in the other corner. */
+.bookflip{position:fixed;left:clamp(12px,2vw,26px);bottom:clamp(12px,2vw,26px);z-index:80;padding:0;
+  width:clamp(90px,10vw,130px);border-radius:4px;overflow:hidden;line-height:0;transition:box-shadow .3s ease,transform .18s}
+.bookflip img{width:100%;height:auto;display:block}
+.bookflip:hover{box-shadow:0 0 20px var(--mustard);transform:translateY(-2px)}
+.bookflip[aria-expanded="true"]{box-shadow:0 0 0 2px var(--mustard)}

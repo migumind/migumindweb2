@@ -1,12 +1,174 @@
 ---
-import WipPage from '../../components/WipPage.astro'
+import {PortableText} from 'astro-portabletext'
+import Base from '../../layouts/Base.astro'
+import {getDesignProjects} from '../../lib/sanity'
+import {ratioOf, responsive, urlFor} from '../../lib/image'
+
+const projects = await getDesignProjects()
+
+// Shown until the first design project is published, so the layout is visible
+// and it's clear which studio field lands where.
+const TEMPLATE = [
+  {no: 'C_01', title: 'Project title', client: 'Client name', category: 'Visual identity', year: '2026'},
+  {no: 'C_02', title: 'Project title', client: 'Client name', category: 'Poster series', year: '2026'},
+]
 ---
 
-<WipPage
-  title="Graphic design"
-  heading="Graphic<br />design"
-  section="design"
-  accent="var(--cobalt)"
-  inkOnAccent={false}
-  note="The graphic design portfolio is being put together."
-/>
+<Base title="Graphic design — Migumind" section="design">
+  <div class="page">
+    <div class="band" style="--accent:var(--cobalt)">
+      <h1>Graphic<br />design</h1>
+      <span class="sub m m11">
+        PORTFOLIO + COMMISSIONS<br />MIGUMIND / 2026
+      </span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk">
+        <details class="folio" id="portfolio">
+          <summary>
+            <span class="t">Portfolio 2024</span>
+            <span class="m m11 dim hint"><span class="open">Open ↓</span><span class="close">Close ↑</span></span>
+          </summary>
+          <div class="folio-body">
+            <img
+              src="/design/portfolio-2024.webp"
+              srcset="/design/portfolio-2024-1000.webp 1000w, /design/portfolio-2024.webp 1922w"
+              sizes="(max-width: 1100px) 100vw, 1100px"
+              width="1922"
+              height="15660"
+              alt="Miguel Pacheco graphic design portfolio, 2024"
+              loading="lazy"
+              decoding="async"
+            />
+            <button type="button" class="folio-close m m11" data-folio-toggle>Close portfolio ↑</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="blk" style="padding-top:0">
+        <div class="sh">
+          <h2>Commissions</h2>
+          <span class="m m11 dim">
+            {projects.length > 0 ? `${String(projects.length).padStart(2, '0')} ${projects.length === 1 ? 'PROJECT' : 'PROJECTS'}` : 'TEMPLATE'}
+          </span>
+        </div>
+
+        {
+          projects.length === 0 && (
+            <p class="body" style="margin-bottom:28px">
+              Add commissions in the studio under <strong>Design project</strong>: title, client, category, year, a cover
+              image, a brief, more images and an optional link. Each one you publish replaces these placeholders.
+            </p>
+          )
+        }
+
+        <div class="grid12 commissions">
+          {
+            projects.map((p, i) => (
+              <article class="card w6 comm">
+                <div class="shot">
+                  {p.image ? (
+                    <span class="frame" style={`aspect-ratio:${ratioOf(p.image)}`}>
+                      <img {...responsive(p.image, {sizes: '(max-width: 639px) 100vw, 50vw'})} alt={p.title} loading="lazy" />
+                    </span>
+                  ) : (
+                    <div class="ph a32">
+                      <span class="no">C_{String(i + 1).padStart(2, '0')}</span>
+                      <span class="fn">ADD A COVER IMAGE IN THE STUDIO</span>
+                    </div>
+                  )}
+                </div>
+                <div class="meta">
+                  <h3>{p.title}</h3>
+                  {p.year && <span class="sm">{p.year}</span>}
+                </div>
+                <div class="under">
+                  <span>{p.client ?? ''}</span>
+                  <span>{p.category ?? ''}</span>
+                </div>
+                {p.description && p.description.length > 0 && (
+                  <div class="richtext">
+                    <PortableText value={p.description} />
+                  </div>
+                )}
+                {p.gallery && p.gallery.length > 0 && (
+                  <div class="comm-gallery">
+                    {p.gallery.map((g) => (
+                      <span class="frame" style={`aspect-ratio:${ratioOf(g, '1 / 1')}`}>
+                        <img src={urlFor(g).width(480).fit('max').auto('format').url()} alt={`${p.title}, detail`} loading="lazy" />
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {p.link && (
+                  <a class="chip" href={p.link} target="_blank" rel="noopener" style="align-self:flex-start">
+                    View project ↗
+                  </a>
+                )}
+              </article>
+            ))
+          }
+
+          {
+            projects.length === 0 &&
+              TEMPLATE.map((t) => (
+                <article class="card w6 comm tpl" aria-label="Template: example commission">
+                  <div class="shot">
+                    <div class="ph a32">
+                      <span class="no">{t.no}</span>
+                      <span class="fn">COVER IMAGE</span>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <h3>{t.title}</h3>
+                    <span class="sm">{t.year}</span>
+                  </div>
+                  <div class="under">
+                    <span>{t.client}</span>
+                    <span>{t.category}</span>
+                  </div>
+                  <p class="body" style="font-size:14px">
+                    A short brief: what the client needed, what you made, and where it was used.
+                  </p>
+                  <div class="comm-gallery">
+                    <div class="ph a11"><span class="fn">IMAGE</span></div>
+                    <div class="ph a11"><span class="fn">IMAGE</span></div>
+                    <div class="ph a11"><span class="fn">IMAGE</span></div>
+                  </div>
+                </article>
+              ))
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <button type="button" class="bookflip" data-folio-toggle aria-controls="portfolio" aria-expanded="false" aria-label="Open portfolio">
+    <picture>
+      <source srcset="/design/bookflip-still.webp" media="(prefers-reduced-motion: reduce)" />
+      <img src="/design/bookflip.webp" width="240" height="135" alt="" />
+    </picture>
+  </button>
+
+  <script is:inline>
+    ;(function () {
+      var folio = document.getElementById('portfolio')
+      var book = document.querySelector('.bookflip')
+      function sync() {
+        book.setAttribute('aria-expanded', String(folio.open))
+        book.setAttribute('aria-label', folio.open ? 'Close portfolio' : 'Open portfolio')
+      }
+      folio.addEventListener('toggle', sync)
+      document.querySelectorAll('[data-folio-toggle]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          folio.open = !folio.open
+          folio.scrollIntoView({behavior: 'smooth', block: 'start'})
+        })
+      })
+      // Linking straight to /design#portfolio opens it.
+      if (location.hash === '#portfolio') folio.open = true
+      sync()
+    })()
+  </script>
+</Base>
