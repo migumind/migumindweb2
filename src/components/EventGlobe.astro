@@ -53,10 +53,11 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
 <script>
   import {geoDistance, geoGraticule, geoInterpolate, geoOrthographic, geoPath} from 'd3-geo'
   import {feature} from 'topojson-client'
-  import {filter, filterWeight, presimplify, quantile, simplify, sphericalRingArea, sphericalTriangleArea} from 'topojson-simplify'
   import land110Topo from 'world-atlas/land-110m.json'
   import land50Url from 'world-atlas/land-50m.json?url'
   import landGrid from '../lib/landgrid.json'
+  // Low-poly land + highlighted countries, prebuilt by scripts/globe-shapes.mjs.
+  import shapes from '../lib/globe-shapes.json'
 
   type Pin = {id: string; slug: string; city?: string; lat: number; lng: number}
 
@@ -71,15 +72,22 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     chrome: {ocean: '#B4BAB6', land: '#F4F4F0', dark: '#6F7772', grid: '#E6E8E4', rim: '#EDEEEA', shade: 0.6, gridAlpha: 0.8},
   }
 
+  // Countries printed in their own ink, whatever the palette.
+  const HIGHLIGHT = {au: '#F5C6D2', ph: '#F6E58A'} as const
+  type Tint = 'land' | keyof typeof HIGHLIGHT
+
   // Land as a 2° grid (precomputed by scripts/landgrid.mjs) for the blocky
-  // and dot-matrix styles.
-  const LAND_CELLS: [number, number][] = (() => {
+  // and dot-matrix styles, each cell tagged with the ink it prints in.
+  type Cell = {p: [number, number]; tint: Tint}
+  const LAND_CELLS: Cell[] = (() => {
     const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    const {step, cols, rows, bits} = landGrid as {step: number; cols: number; rows: number; bits: string}
-    const out: [number, number][] = []
-    for (let i = 0; i < cols * rows; i++) {
-      const v = A.indexOf(bits[Math.floor(i / 6)])
-      if ((v >> (5 - (i % 6))) & 1) out.push([-180 + step * ((i % cols) + 0.5), 90 - step * (Math.floor(i / cols) + 0.5)])
+    const g = landGrid as {step: number; cols: number; rows: number; bits: string; au: string; ph: string}
+    const bit = (str: string, i: number) => (A.indexOf(str[Math.floor(i / 6)]) >> (5 - (i % 6))) & 1
+    const out: Cell[] = []
+    for (let i = 0; i < g.cols * g.rows; i++) {
+      if (!bit(g.bits, i)) continue
+      const p: [number, number] = [-180 + g.step * ((i % g.cols) + 0.5), 90 - g.step * (Math.floor(i / g.cols) + 0.5)]
+      out.push({p, tint: bit(g.ph, i) ? 'ph' : bit(g.au, i) ? 'au' : 'land'})
     }
     return out
   })()
@@ -105,7 +113,8 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     const P = PALETTES[q.get('palette') || root.dataset.palette || 'sage'] ?? PALETTES.sage
 
     const land110 = feature(land110Topo as any, (land110Topo as any).objects.land)
-    const landAngular = mapStyle === 'angular' ? angularLand() : null
+    const landAngular = mapStyle === 'angular' ? shapes.angular.land : null
+    const tinted = mapStyle === 'angular' ? shapes.angular : shapes.detailed
     const blocks = mapStyle === 'blocks' ? blockLand() : null
     const dots = mapStyle === 'dots' ? LAND_CELLS : null
     let land50: any = null
@@ -233,9 +242,13 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
         drawDots(dots, r)
       } else if (blocks) {
         grid()
-        plate(blocks)
+        plate(blocks.all)
+        tint(blocks.au, HIGHLIGHT.au)
+        tint(blocks.ph, HIGHLIGHT.ph)
       } else {
         plate(land)
+        tint(tinted.au, HIGHLIGHT.au)
+        tint(tinted.ph, HIGHLIGHT.ph)
         grid()
       }
 
@@ -295,18 +308,30 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       ctx.fill()
     }
 
-    function drawDots(cells: [number, number][], r: number) {
+    function tint(geo: any, colour: string) {
+      ctx.beginPath()
+      path(geo)
+      ctx.fillStyle = colour
+      ctx.fill()
+      // A hairline keeps pale inks readable against cream land.
+      ctx.lineWidth = 0.8
+      ctx.strokeStyle = P.dark
+      ctx.stroke()
+    }
+
+    function drawDots(cells: Cell[], r: number) {
       const c: [number, number] = [center[0], center[1]]
       const base = r * ((landGrid.step * Math.PI) / 180) * 0.44
-      const face = new Path2D()
+      const faces: Record<Tint, Path2D> = {land: new Path2D(), au: new Path2D(), ph: new Path2D()}
       const shadow = new Path2D()
-      for (const p of cells) {
+      for (const {p, tint} of cells) {
         const d = geoDistance(p, c)
         if (d > Math.PI / 2) continue
         const xy = proj(p)
         if (!xy) continue
         // Shrink toward the edge, like dots printed on a curved surface.
         const rad = base * Math.sqrt(Math.cos(d))
+        const face = faces[tint]
         face.moveTo(xy[0] + rad, xy[1])
         face.arc(xy[0], xy[1], rad, 0, Math.PI * 2)
         shadow.moveTo(xy[0] + rad + 1.2, xy[1] + 1)
@@ -315,7 +340,11 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       ctx.fillStyle = P.dark
       ctx.fill(shadow)
       ctx.fillStyle = P.land
-      ctx.fill(face)
+      ctx.fill(faces.land)
+      ctx.fillStyle = HIGHLIGHT.au
+      ctx.fill(faces.au)
+      ctx.fillStyle = HIGHLIGHT.ph
+      ctx.fill(faces.ph)
     }
 
     function loadDetail() {
@@ -592,11 +621,12 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       if (e.key === 'Escape') closePopover()
     })
 
+    // Open on the events together with the highlighted countries, so the
+    // Philippines and Australia are both in view from the start.
     function homeView(): [number, number] {
-      if (!pins.length) return [134, -10]
-      const lat = pins.reduce((s, p) => s + p.lat, 0) / pins.length
-      // Sit the pins a little below centre so their labels have room above.
-      return [meanLng(pins.map((p) => p.lng)), clampLat(lat + 12)]
+      const anchors = [...pins.map((p) => [p.lng, p.lat]), [122, 12], [134, -25]]
+      const lat = anchors.reduce((s, p) => s + p[1], 0) / anchors.length
+      return [meanLng(anchors.map((p) => p[0])), clampLat(lat)]
     }
 
     new ResizeObserver(resize).observe(root)
@@ -609,34 +639,33 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     }
   }
 
-  // Low-poly continents: keep only the most significant ~7% of
-  // coastline points and drop small islands, so shapes read as cut paper.
-  function angularLand() {
-    const topo = presimplify(JSON.parse(JSON.stringify(land110Topo)), sphericalTriangleArea)
-    const kept = simplify(topo, quantile(topo, 0.07))
-    const trimmed = filter(kept, filterWeight(kept, 1.2e-3, sphericalRingArea))
-    return feature(trimmed as any, (trimmed as any).objects.land)
-  }
-
   // Land as 4° tiles with a gap between them: a blocky pixel map.
+  // A tile takes the Philippines' or Australia's ink if any of its 2° cells
+  // belongs to them (Philippines first, so its few cells never get lost).
   function blockLand() {
     const S = 4
-    const seen = new Set<string>()
-    const polys: [number, number][][][] = []
-    const gap = 0.45
-    for (const [lng, lat] of LAND_CELLS) {
+    const tiles = new Map<string, {x: number; y: number; tint: Tint}>()
+    const rank: Record<Tint, number> = {land: 0, au: 1, ph: 2}
+    for (const {p: [lng, lat], tint} of LAND_CELLS) {
       const x = Math.floor((lng + 180) / S)
       const y = Math.floor((lat + 90) / S)
       const key = x + ',' + y
-      if (seen.has(key)) continue
-      seen.add(key)
-      const x0 = -180 + x * S + gap
-      const x1 = -180 + (x + 1) * S - gap
-      const y0 = -90 + y * S + gap
-      const y1 = -90 + (y + 1) * S - gap
-      polys.push([[[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]])
+      const t = tiles.get(key)
+      if (!t) tiles.set(key, {x, y, tint})
+      else if (rank[tint] > rank[t.tint]) t.tint = tint
     }
-    return {type: 'MultiPolygon', coordinates: polys}
+    const gap = 0.45
+    const group = (keep: (t: Tint) => boolean) => ({
+      type: 'MultiPolygon',
+      coordinates: [...tiles.values()].filter((t) => keep(t.tint)).map(({x, y}) => {
+        const x0 = -180 + x * S + gap
+        const x1 = -180 + (x + 1) * S - gap
+        const y0 = -90 + y * S + gap
+        const y1 = -90 + (y + 1) * S - gap
+        return [[[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]]
+      }),
+    })
+    return {all: group(() => true), au: group((t) => t === 'au'), ph: group((t) => t === 'ph')}
   }
 
   function meanLng(lngs: number[]) {
