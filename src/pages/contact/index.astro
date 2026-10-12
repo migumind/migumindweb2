@@ -1,12 +1,301 @@
 ---
-import WipPage from '../../components/WipPage.astro'
+import Base from '../../layouts/Base.astro'
+import Gloss from '../../components/Gloss.astro'
+import {PALETTE, SIZE} from '../../lib/pixel'
+
+const EMAIL = 'migupaint@gmail.com'
+// Unlocks Send. A real drawing takes a person a minute; a form-filling bot won't bother.
+const MIN_PIXELS = 12
+const drawingBase = new URL('/contact/drawing/', Astro.site ?? 'https://migumind.com').href
+const NAMES = ['Eraser', 'Ink', 'Paper', 'Vermilion', 'Mustard', 'Forest', 'Sage', 'Cobalt', 'Lavender', 'Pink', 'Skin', 'Sky']
 ---
 
-<WipPage
-  title="Contact"
-  heading="Contact"
-  section="contact"
-  accent="var(--mustard)"
-  inkOnAccent={true}
-  note="Contact details are coming soon."
-/>
+<Base title="Contact — Migumind" section="contact">
+  <div class="page contact">
+    <div class="band" style="--accent:var(--mustard);color:var(--fixed-ink)">
+      <h1>Contact</h1>
+      <span class="sub m m11">SAY HI / COMMISSIONS / COLLABS<br />SYDNEY / AUSTRALIA</span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk hello">
+        <figure class="snap">
+          <span class="tape" aria-hidden="true"></span>
+          <img src="/contact/migu.webp" width="900" height="1200" alt="Migu in a denim cap, throwing a peace sign on a laneway walk" />
+          <figcaption>out walking, earphones in <span class="m">'26</span></figcaption>
+        </figure>
+
+        <div class="note">
+          <span class="m dim">HELLO / KUMUSTA</span>
+          <h2>Hey, you made it.</h2>
+          <Gloss tl="ku-mu-s-ta" en="how are you" />
+          <p>
+            Thanks for wandering all the way over here. Whether it's a commission, a collab, a live
+            painting gig, or you just want to tell me what a piece made you feel, I'd genuinely love to
+            hear from you. Every message is read by me, a real person, usually with a coffee, and I
+            always write back.
+          </p>
+          <p>
+            The best ones come with a little drawing, so there's a tiny pixel pad below. No skill
+            needed. Stick figures are very welcome.
+          </p>
+          <div class="mailrow">
+            <a class="mail" href={`mailto:${EMAIL}`}>{EMAIL}</a>
+            <button class="chip" type="button" data-copy={EMAIL}>Copy</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="blk" id="doodle">
+        <div class="sh">
+          <div>
+            <h2>Leave me a doodle</h2>
+            <Gloss tl="gu-hi-t ka" en="draw something" />
+          </div>
+          <div class="r"><span class="m dimmer">{SIZE}×{SIZE} / {PALETTE.length - 1} COLOURS</span></div>
+        </div>
+
+        <form class="doodle" data-doodle data-email={EMAIL} data-base={drawingBase} data-min={MIN_PIXELS} novalidate>
+          <div class="console">
+            <div class="ctop">
+              <span class="led" aria-hidden="true"></span>
+              <span class="m">MIGU-PAINT {SIZE}</span>
+              <span class="m count" data-count>000 PX</span>
+            </div>
+            <canvas
+              class="pad"
+              data-pad
+              width={SIZE}
+              height={SIZE}
+              tabindex="0"
+              role="img"
+              aria-label="Drawing pad. Click or drag to paint; with the keyboard, use the arrow keys to move and Space to paint."
+            ></canvas>
+            <div class="palette" role="radiogroup" aria-label="Colour">
+              {
+                PALETTE.map((c, i) =>
+                  i === 0 ? null : (
+                    <button
+                      type="button"
+                      role="radio"
+                      class="sw"
+                      data-colour={i}
+                      aria-checked={i === 1 ? 'true' : 'false'}
+                      aria-label={NAMES[i]}
+                      style={`--c:${c}`}
+                    />
+                  ),
+                )
+              }
+            </div>
+            <div class="tools">
+              <button type="button" class="tool" data-colour="0" role="radio" aria-checked="false">Eraser</button>
+              <button type="button" class="tool" data-undo>Undo</button>
+              <button type="button" class="tool" data-clear>Clear</button>
+            </div>
+          </div>
+
+          <div class="fields">
+            <label>
+              <span class="m">YOUR NAME</span>
+              <input name="name" autocomplete="name" required />
+            </label>
+            <label>
+              <span class="m">YOUR MESSAGE</span>
+              <textarea name="message" rows="6" required></textarea>
+            </label>
+            <!-- Left empty by people; filled in by bots that complete every field. -->
+            <label class="hp" aria-hidden="true">
+              Website <input name="website" tabindex="-1" autocomplete="off" />
+            </label>
+            <p class="m gate" data-gate aria-live="polite"></p>
+            <button class="send" type="submit" data-send disabled>Send it →</button>
+            <p class="m dim small">
+              Opens your email app with your message and a link to your drawing, addressed to me.
+            </p>
+            <div class="sent" data-sent hidden>
+              <p>Your email app should be open. Nothing happened?</p>
+              <button class="chip" type="button" data-copy-message>Copy the message</button>
+              <span class="m dim">and send it to {EMAIL}</span>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import {PALETTE, SIZE, encode, paint} from '../../lib/pixel'
+
+  // Copy buttons
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(b.dataset.copy!)
+        b.textContent = 'Copied'
+        setTimeout(() => (b.textContent = 'Copy'), 1600)
+      } catch {}
+    })
+  })
+
+  const form = document.querySelector<HTMLFormElement>('[data-doodle]')!
+  const pad = form.querySelector<HTMLCanvasElement>('[data-pad]')!
+  const countEl = form.querySelector<HTMLElement>('[data-count]')!
+  const gate = form.querySelector<HTMLElement>('[data-gate]')!
+  const send = form.querySelector<HTMLButtonElement>('[data-send]')!
+  const MIN = Number(form.dataset.min)
+
+  let px: number[] = new Array(SIZE * SIZE).fill(0)
+  let colour = 1
+  const history: number[][] = []
+  let cursor = Math.floor((SIZE * SIZE) / 2 + SIZE / 2)
+  let showCursor = false
+
+  const filled = () => px.filter(Boolean).length
+  const message = () => (form.elements.namedItem('message') as HTMLTextAreaElement).value.trim()
+  const name = () => (form.elements.namedItem('name') as HTMLInputElement).value.trim()
+
+  function render() {
+    paint(pad, px, 1)
+    if (showCursor) {
+      const ctx = pad.getContext('2d')!
+      ctx.strokeStyle = 'rgba(239,177,0,.9)'
+      ctx.lineWidth = 0.15
+      ctx.strokeRect((cursor % SIZE) + 0.08, Math.floor(cursor / SIZE) + 0.08, 0.84, 0.84)
+    }
+    const n = filled()
+    countEl.textContent = `${String(n).padStart(3, '0')} PX`
+    update()
+  }
+
+  function update() {
+    const need = Math.max(0, MIN - filled())
+    const ready = need === 0 && message().length > 1 && name().length > 0
+    send.disabled = !ready
+    gate.textContent = need
+      ? `Draw ${need} more pixel${need === 1 ? '' : 's'} to unlock sending.`
+      : !name() || message().length < 2
+        ? 'Lovely drawing. Now add your name and a message.'
+        : 'Ready when you are.'
+  }
+
+  const snapshot = () => {
+    history.push(px.slice())
+    if (history.length > 60) history.shift()
+  }
+
+  // Pointer drawing: cells under the pointer, joined up with a line so fast strokes don't skip.
+  const cellAt = (e: PointerEvent) => {
+    const r = pad.getBoundingClientRect()
+    const x = Math.floor(((e.clientX - r.left) / r.width) * SIZE)
+    const y = Math.floor(((e.clientY - r.top) / r.height) * SIZE)
+    return x < 0 || y < 0 || x >= SIZE || y >= SIZE ? -1 : y * SIZE + x
+  }
+  function line(a: number, b: number, c: number) {
+    let x0 = a % SIZE, y0 = Math.floor(a / SIZE)
+    const x1 = b % SIZE, y1 = Math.floor(b / SIZE)
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0)
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1
+    let err = dx + dy
+    for (;;) {
+      px[y0 * SIZE + x0] = c
+      if (x0 === x1 && y0 === y1) break
+      const e2 = 2 * err
+      if (e2 >= dy) { err += dy; x0 += sx }
+      if (e2 <= dx) { err += dx; y0 += sy }
+    }
+  }
+
+  let last = -1
+  let stroke = 1
+  pad.addEventListener('contextmenu', (e) => e.preventDefault())
+  pad.addEventListener('pointerdown', (e) => {
+    const n = cellAt(e)
+    if (n < 0) return
+    pad.setPointerCapture(e.pointerId)
+    snapshot()
+    stroke = e.button === 2 ? 0 : colour // right-click erases
+    showCursor = false
+    px[n] = stroke
+    last = n
+    render()
+  })
+  pad.addEventListener('pointermove', (e) => {
+    if (last < 0) return
+    const n = cellAt(e)
+    if (n < 0 || n === last) return
+    line(last, n, stroke)
+    last = n
+    render()
+  })
+  const end = () => (last = -1)
+  pad.addEventListener('pointerup', end)
+  pad.addEventListener('pointercancel', end)
+
+  // Keyboard drawing, for anyone not using a pointer.
+  pad.addEventListener('focus', () => { showCursor = true; render() })
+  pad.addEventListener('blur', () => { showCursor = false; render() })
+  pad.addEventListener('keydown', (e) => {
+    const x = cursor % SIZE, y = Math.floor(cursor / SIZE)
+    const moves: Record<string, number> = {ArrowLeft: x > 0 ? -1 : 0, ArrowRight: x < SIZE - 1 ? 1 : 0, ArrowUp: y > 0 ? -SIZE : 0, ArrowDown: y < SIZE - 1 ? SIZE : 0}
+    if (e.key in moves) {
+      e.preventDefault()
+      cursor += moves[e.key]
+      if (e.shiftKey) px[cursor] = colour // hold Shift to paint while moving
+    } else if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault()
+      snapshot()
+      px[cursor] = px[cursor] === colour ? 0 : colour
+    } else return
+    showCursor = true
+    render()
+  })
+
+  // Palette + tools
+  const swatches = form.querySelectorAll<HTMLButtonElement>('[data-colour]')
+  swatches.forEach((b) =>
+    b.addEventListener('click', () => {
+      colour = Number(b.dataset.colour)
+      swatches.forEach((s) => s.setAttribute('aria-checked', String(s === b)))
+    }),
+  )
+  form.querySelector('[data-undo]')!.addEventListener('click', () => {
+    const prev = history.pop()
+    if (prev) { px = prev; render() }
+  })
+  form.querySelector('[data-clear]')!.addEventListener('click', () => {
+    if (!filled()) return
+    snapshot()
+    px.fill(0)
+    render()
+  })
+  form.addEventListener('input', update)
+
+  // Send: hand the message to the visitor's own mail app, drawing attached as a link.
+  const compose = () => {
+    const link = form.dataset.base + '#' + encode(px)
+    return {
+      subject: `Hi Migu! A message from ${name()}`,
+      body: `${message()}\n\n— ${name()}\n\nI drew you something: ${link}`,
+    }
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault()
+    if ((form.elements.namedItem('website') as HTMLInputElement).value) return // bot
+    if (send.disabled) return
+    const {subject, body} = compose()
+    location.href = `mailto:${form.dataset.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    form.querySelector<HTMLElement>('[data-sent]')!.hidden = false
+  })
+  form.querySelector('[data-copy-message]')!.addEventListener('click', async (e) => {
+    const {subject, body} = compose()
+    const b = e.currentTarget as HTMLButtonElement
+    try {
+      await navigator.clipboard.writeText(`${subject}\n\n${body}`)
+      b.textContent = 'Copied'
+    } catch {}
+  })
+
+  render()
+</script>

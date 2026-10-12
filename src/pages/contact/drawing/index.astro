@@ -1,0 +1,48 @@
+---
+import Base from '../../../layouts/Base.astro'
+---
+
+<Base title="A drawing for Migu — Migumind" section="contact" signupPopup={false}>
+  <div class="page contact">
+    <div class="band" style="--accent:var(--mustard);color:var(--fixed-ink)">
+      <h1>A drawing</h1>
+      <span class="sub m m11">MADE ON MIGU-PAINT 16<br />FROM THE CONTACT PAGE</span>
+    </div>
+    <div class="wrap">
+      <section class="blk viewer">
+        <div class="console" data-frame hidden>
+          <div class="ctop"><span class="led" aria-hidden="true"></span><span class="m">MIGU-PAINT 16</span></div>
+          <canvas class="pad" data-view role="img" aria-label="A 16 by 16 pixel drawing"></canvas>
+        </div>
+        <div class="vnote">
+          <p class="lede" data-msg>Opening the drawing…</p>
+          <div class="ctarow">
+            <a class="chip" data-download hidden download="drawing-for-migu.png">Save as PNG</a>
+            <a class="chip" href="/contact#doodle">Draw one yourself →</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import {decode, paint} from '../../../lib/pixel'
+
+  const px = decode(location.hash)
+  const msg = document.querySelector<HTMLElement>('[data-msg]')!
+  if (!px) {
+    msg.textContent = "This link doesn't hold a drawing. It may have been cut off in the email."
+  } else {
+    const view = document.querySelector<HTMLCanvasElement>('[data-view]')!
+    paint(view, px, 1)
+    document.querySelector<HTMLElement>('[data-frame]')!.hidden = false
+    msg.textContent = 'Someone drew this for you.'
+    // A crisp, upscaled copy to keep.
+    const big = document.createElement('canvas')
+    paint(big, px, 32)
+    const dl = document.querySelector<HTMLAnchorElement>('[data-download]')!
+    dl.href = big.toDataURL('image/png')
+    dl.hidden = false
+  }
+</script>

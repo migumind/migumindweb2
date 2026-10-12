@@ -1,12 +1,154 @@
 ---
-import WipPage from '../../components/WipPage.astro'
+import Base from '../../layouts/Base.astro'
+import Gloss from '../../components/Gloss.astro'
+
+// The printed sheet, drawn once and reused for each shredded strip.
+const STRIPS = 10
+const strips = Array.from({length: STRIPS}, (_, i) => ({
+  i,
+  // how each strip drifts as it falls out of the shredder
+  dx: ((((i * 37) % 9) - 4) * 0.9).toFixed(1),
+  rot: ((((i * 53) % 11) - 5) * 1.6).toFixed(1),
+  fall: (26 + ((i * 29) % 7) * 4).toFixed(0),
+}))
 ---
 
-<WipPage
-  title="About"
-  heading="About"
-  section="about"
-  accent="var(--sage)"
-  inkOnAccent={true}
-  note="A proper introduction to the practice is on its way. In the meantime, the work speaks for itself."
-/>
+<Base title="About — Migumind" section="about">
+  <div class="page aboutpage">
+    <div class="band" style="--accent:var(--sage);color:var(--fixed-ink)">
+      <h1>About</h1>
+      <span class="sub m m11">MIGU<br />ARTIST / DESIGNER / SYDNEY</span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk aboutgrid">
+        <div class="printloop" data-printloop role="img" aria-label="A photo of Migu printing out of a printer and feeding straight into a paper shredder, over and over">
+          <div class="printer" aria-hidden="true">
+            <span class="ptop"></span>
+            <span class="pled"></span>
+            <span class="plabel m">MIGU-JET 2000</span>
+            <span class="pslot"></span>
+          </div>
+
+          <div class="feed" aria-hidden="true">
+            <div class="sheet">
+              <img src="/about/migu.webp" alt="" width="720" height="960" />
+              <span class="cap m">MIGU <span data-copyno>COPY Nº 0001</span></span>
+            </div>
+          </div>
+
+          <div class="shredder" aria-hidden="true">
+            <span class="sslot"></span>
+            <span class="slabel m">SHRED</span>
+            <span class="steeth"></span>
+          </div>
+
+          <div class="shreds" aria-hidden="true">
+            {
+              strips.map((s) => (
+                <div class="sheet strip" style={`--i:${s.i};--n:${STRIPS};--dx:${s.dx}cqw;--rot:${s.rot}deg;--fall:${s.fall}cqw`}>
+                  <img src="/about/migu.webp" alt="" width="720" height="960" />
+                  <span class="cap m">MIGU <span data-copyno>COPY Nº 0001</span></span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        <article class="hesse">
+          <span class="m dim">ON MIGU / A SHORT ACCOUNT</span>
+          <h2>The critic and the kid</h2>
+          <Gloss tl="da-la-wa-ng ta-o" en="two people" />
+
+          <p>
+            There are two people living in Migu, and they have never once agreed on anything. The first
+            is a businessman: cool, logical, unsentimental, a harsh critic of life who keeps the ledger
+            and wants to know what all this scribbling is for. The second is a kid: frenzied,
+            sticky-fingered, hungry for attention and hungrier still for making things, who would draw
+            on the walls until sunrise if nobody stopped him. Like Jekyll and Hyde, each takes his turn
+            at the wheel. Unlike Jekyll and Hyde, neither one is the monster. It has taken Migu most of
+            his life to understand that.
+          </p>
+
+          <span class="part m" aria-hidden="true">I.</span>
+          <p>
+            The kid came first. Migu's parents were immigrants who worked late, and they did not trust an
+            empty house and a games console with their son. So every afternoon he stayed behind in
+            after-school care, and every evening at seven o'clock he was among the last to be picked up.
+            The hours in between were long and fluorescent, and they were his. He filled them with paper.
+            He drew, he invented, he wandered off inside his own head, and somewhere in that waiting room
+            he fell in love with the one thing that never ran out: his imagination. He was surrounded by
+            that loud, childish energy every day, and it never quite washed off.
+          </p>
+
+          <span class="part m" aria-hidden="true">II.</span>
+          <p>
+            Then the businessman arrived, as he does for most of us around high school. Migu turned to
+            his books. He still drew, and he was quietly fascinated by the street: graffiti along the train
+            lines, the swagger and chaos of eshay culture, a whole world that made up its own rules. It
+            didn't last. The businessman had done the sums, and there was a bright future in engineering.
+            So Migu studied with everything he had, accelerated his degree in electrical engineering, and
+            set his sights on something suitably enormous. The next supercomputer, maybe. Something that
+            would matter.
+          </p>
+
+          <span class="part m" aria-hidden="true">III.</span>
+          <p>
+            But the kid was never really gone. He was only waiting to be picked up. Somewhere between the
+            lectures and the lab benches he came back, wanting to draw, to explore, to forget the grand
+            plan for an afternoon. That was when Migu found the legendary Kim Jung Gi, and the world
+            cracked open: perspective that seemed to bend space, linework so intricate it looked like
+            breathing. Migu studied him the way he studied circuits. His life, his methods, his frequency,
+            which was all the time. Drawing came to fill as much of his days as mathematics and circuit
+            design, and for the first time both halves of him were working equally hard.
+          </p>
+          <p>
+            From there the doors kept opening. James Jean and David Choe, Asian-American artists who
+            showed him that someone who looked like him could belong on the gallery wall and the street
+            wall alike. Later Moebius and Alejandro Jodorowsky, who taught him that a drawing can be a
+            spiritual act, that making art changes the person making it, and that illustration has no
+            ceiling, only further horizons to push toward.
+          </p>
+
+          <span class="part m" aria-hidden="true">IV.</span>
+          <p>
+            Now Migu is a fully grown adult who still carries those grand visions in both hands, and the
+            world will not stop talking. The wars on every screen. Rent and groceries climbing a little
+            higher every month. What it means to be Filipino, and the racism that comes with it, in a
+            white society he grew up inside and still has to explain himself to. The romances that didn't
+            work out, and the daydreams that moved into their place. AI and the machines getting cleverer
+            by the week. And the oldest question of all: how to fit the thing you love into a life that
+            keeps asking for everything else.
+          </p>
+          <p>
+            The businessman says be sensible. The kid says draw anyway. On his good days Migu lets them
+            argue, and makes his work in the space their argument leaves behind. It's why his photograph
+            over there is printed and shredded and printed again. The businessman sees waste. The kid sees
+            a magic trick. They are both right.
+          </p>
+          <p class="last">
+            This is where he is now. It is probably where you are too, reading this.
+          </p>
+
+          <aside class="aisign">
+            <p class="m">
+              * This description was AI-generated, because no one knows me better than the computer.
+            </p>
+            <span class="sig">— Claude</span>
+          </aside>
+        </article>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  // Every pass through the printer is a fresh copy, so the counter ticks up each loop.
+  const loop = document.querySelector<HTMLElement>('[data-printloop]')
+  const sheet = loop?.querySelector<HTMLElement>('.feed .sheet')
+  let n = 1
+  sheet?.addEventListener('animationiteration', () => {
+    n += 1
+    loop!.querySelectorAll('[data-copyno]').forEach((el) => (el.textContent = `COPY Nº ${String(n).padStart(4, '0')}`))
+  })
+</script>

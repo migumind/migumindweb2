@@ -123,10 +123,10 @@ add('tag-yellow', 440, 300, `
 add('signature-orange', 360, 380, `
   ${die('<rect x="20" y="20" width="320" height="340" rx="4"/>')}
   <rect x="20" y="20" width="320" height="340" fill="#F2582C"/>
-  ${T(184, 220, 'mp', 220, {font: 'Brush Script MT', weight: 400, fill: '#fff'})}
+  ${T(184, 220, 'migu', 170, {font: 'Brush Script MT', weight: 400, fill: '#fff'})}
   <path d="M70 250 q110 30 230 -20" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
-  ${T(180, 320, 'm.pacheco', 48, {font: 'Brush Script MT', weight: 400, fill: '#fff'})}
-  ${T(60, 60, 'MP', 22, {fill: '#fff', anchor: 'start'})}`)
+  ${T(180, 320, 'migumind', 48, {font: 'Brush Script MT', weight: 400, fill: '#fff'})}
+  ${T(60, 60, 'MIGU', 22, {fill: '#fff', anchor: 'start'})}`)
 
 // 11. Black box legends
 add('ink-paper-screen', 420, 300, `
