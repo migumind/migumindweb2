@@ -7,11 +7,36 @@ export default defineType({
   fields: [
     defineField({
       name: 'track',
-      title: 'Music track',
+      title: 'Music track (song 1)',
       type: 'file',
       options: {accept: 'audio/*'},
       description:
         'Upload the audio here to unlock the real visualiser and the HPF/LPF filter. Without it the player falls back to the SoundCloud embed, where only volume can be controlled.',
+    }),
+    defineField({
+      name: 'trackTitle',
+      title: 'Now playing (song 1)',
+      type: 'string',
+      description:
+        'Scrolls across the record player while the music plays, e.g. "Nap King Cole — 110 / No More". Leave empty to use the file name (or the SoundCloud title).',
+    }),
+    defineField({
+      name: 'tracks',
+      title: 'More songs',
+      type: 'array',
+      description:
+        'Songs that play after song 1, in this order; the player loops back to the start after the last. Visitors can skip with the arrows on the player.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'song',
+          fields: [
+            defineField({name: 'file', title: 'Audio', type: 'file', options: {accept: 'audio/*'}, validation: (r) => r.required()}),
+            defineField({name: 'title', title: 'Now playing', type: 'string', description: 'Leave empty to use the file name.'}),
+          ],
+          preview: {select: {title: 'title', subtitle: 'file.asset.originalFilename'}},
+        }),
+      ],
     }),
     defineField({
       name: 'introVideo',

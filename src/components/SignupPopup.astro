@@ -1,0 +1,144 @@
+---
+// First-visit signup popup, plus the script that runs every signup form on the page.
+// Shown once: after 12 s or a third of the way down the page, whichever is first.
+// Closing it keeps it away for 60 days; joining keeps it away for good.
+import SignupForm from './SignupForm.astro'
+import Gloss from './Gloss.astro'
+import {getStickerSet, stickerWidth} from '../lib/stickers'
+
+interface Props {
+  /** Pages with their own signup form (the Shop page) skip the popup. */
+  show?: boolean
+}
+
+const {show = true} = Astro.props
+
+// The corner sticker: whichever of the studio's stickers is closest to square.
+const sticker = show
+  ? (await getStickerSet()).reduce((best, s) => (Math.abs(Math.log(s.w / s.h)) < Math.abs(Math.log(best.w / best.h)) ? s : best))
+  : undefined
+---
+
+{
+  show && (
+    <dialog class="signpop" data-signpop aria-labelledby="signpop-title">
+      <button class="x m" type="button" data-close aria-label="Close">Close ×</button>
+      <span class="m dim">MIGUMIND / LIST</span>
+      <h2 id="signpop-title">First dibs on drops</h2>
+      <Gloss tl="u-na sa ba-li-ta" en="first to hear" />
+      <p class="lede">
+        Early access to print drops and the print club, before they go anywhere else.
+      </p>
+      <SignupForm source="popup" />
+      {sticker && <img class="sticker" src={sticker.src} alt="" style={`--sw:${stickerWidth(sticker, 84)}px`} />}
+    </dialog>
+  )
+}
+
+<script>
+  const KEY = 'migu-signup'
+  const LATER = 60 * 24 * 3600 * 1000
+
+  const remember = (state: 'closed' | 'joined') => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({state, at: Date.now()}))
+    } catch {}
+  }
+  const shouldShow = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || 'null')
+      if (!saved) return true
+      return saved.state === 'closed' && Date.now() - saved.at > LATER
+    } catch {
+      return false
+    }
+  }
+
+  // ---- every signup form ----
+  document.querySelectorAll<HTMLFormElement>('[data-signup]').forEach((form) => {
+    const msg = form.querySelector<HTMLElement>('[data-msg]')!
+    const input = form.querySelector<HTMLInputElement>('input[type=email]')!
+    const button = form.querySelector<HTMLButtonElement>('button[type=submit]')!
+    const say = (text: string, tone = '') => {
+      msg.textContent = text
+      msg.dataset.tone = tone
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (!input.checkValidity()) {
+        say('That email doesn’t look right.', 'err')
+        input.focus()
+        return
+      }
+      const endpoint = form.dataset.endpoint
+      if (!endpoint) {
+        say('Not connected yet: set PUBLIC_SIGNUP_ENDPOINT once the Worker is deployed.', 'err')
+        return
+      }
+      button.disabled = true
+      say('Adding you…')
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            email: input.value,
+            list: form.dataset.list,
+            source: form.dataset.source,
+            website: (form.elements.namedItem('website') as HTMLInputElement).value,
+          }),
+        })
+        if (!res.ok) throw new Error(String(res.status))
+        form.classList.add('done')
+        say('You’re on the list. See you at the next drop.', 'ok')
+        remember('joined')
+        const pop = form.closest('dialog')
+        if (pop) setTimeout(() => pop.close(), 2600)
+      } catch {
+        button.disabled = false
+        say('Something went wrong. Try again in a moment?', 'err')
+      }
+    })
+  })
+
+  // ---- first-visit popup ----
+  const pop = document.querySelector<HTMLDialogElement>('[data-signpop]')
+  if (pop && shouldShow()) {
+    let opened = false
+    const open = () => {
+      if (opened || document.querySelector('dialog[open]')) return
+      opened = true
+      removeEventListener('scroll', onScroll)
+      pop.showModal()
+    }
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - innerHeight
+      if (max > 0 && scrollY / max > 0.33) open()
+    }
+    const timer = setTimeout(open, 12000)
+    addEventListener('scroll', onScroll, {passive: true})
+
+    // Remember the dismissal at the moment of closing rather than on the dialog's
+    // `close` event, which some browsers only fire on the next rendered frame.
+    const dismiss = () => {
+      clearTimeout(timer)
+      if (!pop.querySelector('.signup.done')) remember('closed')
+    }
+    const shut = () => {
+      dismiss()
+      pop.close()
+    }
+    pop.querySelector('[data-close]')!.addEventListener('click', shut)
+    pop.addEventListener('cancel', dismiss) // Esc
+    pop.addEventListener('close', dismiss)
+    // A click on the dimmed backdrop (outside the card) closes it too.
+    pop.addEventListener('click', (e) => {
+      // Only clicks on the dialog itself; a keyboard "click" on the button has no position.
+      if (e.target !== pop) return
+      const r = pop.getBoundingClientRect()
+      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom
+      if (!inside) shut()
+    })
+  }
+</script>

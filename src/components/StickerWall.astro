@@ -2,9 +2,7 @@
 // A sticker-bombed wall: stickers from the studio ("Event stickers"), or the
 // built-in set when none are uploaded. Layout is seeded, so it is the same on
 // every build and never shifts between server and browser.
-import {getStickers} from '../lib/sanity'
-import {urlFor} from '../lib/image'
-import DEFAULTS from '../lib/stickers.json'
+import {getStickerSet} from '../lib/stickers'
 
 interface Props {
   /** How many stickers to place. They repeat when there are fewer uploads. */
@@ -15,15 +13,7 @@ interface Props {
 
 const {count = 42, seed = 7, class: cls = ''} = Astro.props
 
-const uploaded = (await getStickers()) ?? []
-const set = uploaded.length
-  ? uploaded.map((s) => {
-      const m = s.asset?._ref?.match(/-(\d+)x(\d+)-[a-z]+$/)
-      const w = m ? +m[1] : 400
-      const h = m ? +m[2] : 300
-      return {src: urlFor(s).width(480).fit('max').auto('format').url(), w, h, size: s.size ?? 1}
-    })
-  : DEFAULTS.map((d) => ({...d, size: 1}))
+const set = await getStickerSet()
 
 // mulberry32
 let a = seed >>> 0

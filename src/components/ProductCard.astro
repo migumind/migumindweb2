@@ -1,0 +1,27 @@
+---
+import type {StoreProduct} from '../lib/shopify'
+
+interface Props {
+  product: StoreProduct
+}
+
+const {product: p} = Astro.props
+---
+
+<a class="card w4" href={p.url}>
+  <div class="shot">
+    <span class="frame" style={p.image ? `aspect-ratio:${p.image.width} / ${p.image.height}` : 'aspect-ratio:1'}>
+      {p.image && <img src={p.image.src} alt={p.title} loading="lazy" />}
+    </span>
+    <span class="plate"></span>
+    <span class="plate b"></span>
+  </div>
+  <div class="meta">
+    <h3>{p.title}</h3>
+    <span class="sm">{p.price}</span>
+  </div>
+  <div class="under">
+    <span>SHOP.MIGUMIND.COM</span>
+    <span>{p.available ? 'Available' : 'Sold out'}</span>
+  </div>
+</a>

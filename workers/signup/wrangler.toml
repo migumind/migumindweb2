@@ -1,0 +1,13 @@
+name = "migumind-signup"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Your store's .myshopify.com address (Shopify admin → Settings → Domains), not shop.migumind.com.
+SHOPIFY_STORE = "REPLACE-ME.myshopify.com"
+SHOPIFY_API_VERSION = "2026-04"
+ALLOWED_ORIGINS = "https://migumind.com,https://www.migumind.com,http://localhost:4321"
+
+# SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET are secrets — set them with
+#   npx wrangler secret put SHOPIFY_CLIENT_ID
+#   npx wrangler secret put SHOPIFY_CLIENT_SECRET

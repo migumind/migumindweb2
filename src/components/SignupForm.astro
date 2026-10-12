@@ -1,0 +1,29 @@
+---
+// One email field that adds someone to a list in Shopify (via workers/signup).
+// Used inline on pages and inside the first-visit popup.
+import {SIGNUP_ENDPOINT} from '../lib/shop'
+
+interface Props {
+  /** Which list: 'newsletter' or 'printclub' (the Worker maps these to tags). */
+  list?: 'newsletter' | 'printclub'
+  /** Where the signup came from, saved as a source: tag. */
+  source: string
+  button?: string
+}
+
+const {list = 'newsletter', source, button = 'Join the list'} = Astro.props
+const id = `email-${source}`
+---
+
+<form class="signup" data-signup data-endpoint={SIGNUP_ENDPOINT} data-list={list} data-source={source} novalidate>
+  <div class="row">
+    <label class="visually-hidden" for={id}>Email address</label>
+    <input id={id} type="email" name="email" autocomplete="email" placeholder="your@email.com" required />
+    <button type="submit">{button}</button>
+  </div>
+  <!-- Honeypot: hidden from people, irresistible to bots. -->
+  <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+  <p class="note m" data-msg aria-live="polite">
+    Emails about drops and the print club. Unsubscribe any time. <a href="/privacy">Privacy</a>
+  </p>
+</form>

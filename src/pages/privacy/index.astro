@@ -1,0 +1,50 @@
+---
+// Plain-language privacy page for the mailing list and store. A starting point —
+// have it checked before relying on it.
+import Base from '../../layouts/Base.astro'
+import {SHOP_URL} from '../../lib/shop'
+---
+
+<Base title="Privacy — Migumind" section="" signupPopup={false}>
+  <div class="page">
+    <div class="band" style="--accent:var(--ink)">
+      <h1>Privacy</h1>
+      <span class="sub m m11">MAILING LIST / STORE<br />UPDATED OCTOBER 2026</span>
+    </div>
+
+    <div class="wrap">
+      <section class="blk prose">
+        <h2>The mailing list</h2>
+        <p>
+          When you join the list, the only thing collected is your email address, plus which form you
+          used (for example, the print club waitlist). It is stored in the Migumind store's customer
+          list on Shopify, and used only to email you about drops, the print club, events and new work.
+        </p>
+        <p>
+          Every email has an unsubscribe link. You can also ask for your address to be removed
+          entirely through the <a href="/contact">contact page</a>.
+        </p>
+
+        <h2>The store</h2>
+        <p>
+          Orders, payments and print club memberships are handled by Shopify at
+          <a href={SHOP_URL}>shop.migumind.com</a>. Card details go to Shopify's payment processing and
+          are never seen or stored by this website. Shopify's own privacy policy covers what it
+          processes.
+        </p>
+
+        <h2>This website</h2>
+        <p>
+          This site does not use analytics or advertising trackers. It is hosted on GitHub Pages, which
+          keeps standard server logs (such as IP addresses) for security. Fonts load from Google Fonts
+          and images and music from Sanity, which see your IP address the way any web request does. Your browser stores a couple
+          of small preferences locally, like your colour theme and whether you've closed the signup
+          popup. They never leave your device.
+        </p>
+
+        <h2>Questions</h2>
+        <p>Get in touch through the <a href="/contact">contact page</a>.</p>
+      </section>
+    </div>
+  </div>
+</Base>

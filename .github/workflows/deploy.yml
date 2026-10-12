@@ -7,6 +7,10 @@ on:
   repository_dispatch:
     types: [sanity-publish]
   workflow_dispatch:
+  # Daily rebuild so Shop page prices and stock follow the Shopify store
+  # (16:00 UTC = 2–3am Sydney).
+  schedule:
+    - cron: '0 16 * * *'
 
 permissions:
   contents: read

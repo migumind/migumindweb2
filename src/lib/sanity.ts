@@ -134,7 +134,9 @@ export type HeroSlide = {
 }
 
 export type HomePage = {
-  track?: {asset?: {url?: string; mimeType?: string}}
+  track?: {asset?: {url?: string; mimeType?: string; originalFilename?: string}}
+  trackTitle?: string
+  tracks?: {title?: string; url?: string; originalFilename?: string}[]
   introVideo?: {asset?: {url?: string; mimeType?: string}}
   introPoster?: {asset?: {_ref?: string}}
   heroSlides?: HeroSlide[]
@@ -145,7 +147,9 @@ export type HomePage = {
 export const getHomePage = () =>
   sanityClient.fetch<HomePage | null>(
     `*[_type == "homePage"][0]{
-      track{asset->{url, mimeType}}, introVideo{asset->{url, mimeType}}, introPoster,
+      track{asset->{url, mimeType, originalFilename}}, trackTitle,
+      tracks[defined(file.asset)]{title, "url": file.asset->url, "originalFilename": file.asset->originalFilename},
+      introVideo{asset->{url, mimeType}}, introPoster,
       heroSlides[defined(image.asset)]{_key, image, video{asset->{url, mimeType}}, alt, caption},
       statementHeading, statement
     }`,

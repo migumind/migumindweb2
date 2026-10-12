@@ -1,17 +1,22 @@
 ---
 import '../styles/site.css'
 import VinylPlayer from '../components/VinylPlayer.astro'
+import SignupPopup from '../components/SignupPopup.astro'
+import {SIGNUP_ENABLED} from '../lib/shop'
 
 interface Props {
   title: string
   description?: string
   section?: string
+  /** Show the first-visit signup popup on this page (pages with their own form turn it off). */
+  signupPopup?: boolean
 }
 
 const {
   title,
   description = 'Miguel Pacheco — artist and designer in Sydney. Painting, printmaking, live painting and graphic design. Artworks, exhibitions and studio archive.',
   section = '',
+  signupPopup = true,
 } = Astro.props
 
 // Absolute URLs for metadata, driven by `site` in astro.config.mjs so the
@@ -58,7 +63,7 @@ const NAV = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Martian+Mono:wght@300;400;500;700&family=Yellowtail&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Martian+Mono:wght@300;400;500;700&family=Yellowtail&family=Reenie+Beanie&family=Noto+Sans+Tagalog&display=swap"
     />
 
     <script is:inline>
@@ -95,6 +100,7 @@ const NAV = [
     </main>
 
     <VinylPlayer />
+    {SIGNUP_ENABLED && <SignupPopup show={signupPopup} />}
 
     <footer class="ft">
       <div class="fw">Migumind</div>
@@ -112,6 +118,7 @@ const NAV = [
           <a href="/design">Graphic Design</a>
           <a href="/shop">Shop</a>
           <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
         </div>
         <div class="col">
           <h4>Elsewhere</h4>

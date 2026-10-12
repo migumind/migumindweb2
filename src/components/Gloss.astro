@@ -1,0 +1,19 @@
+---
+// A quiet Tagalog gloss in Baybayin, with its romanised spelling, set under a heading.
+import {baybayin, romanise} from '../lib/baybayin'
+
+interface Props {
+  /** Syllables, hyphenated, words split by spaces: "pi-li-ng li-k-ha" */
+  tl: string
+  /** English meaning, for screen readers. */
+  en?: string
+  class?: string
+}
+
+const {tl, en, class: cls = ''} = Astro.props
+---
+
+<span class={`gloss ${cls}`}>
+  <span class="bay" lang="tl-Tglg" aria-hidden="true">{baybayin(tl)}</span>
+  <span class="m" lang="tl" title={en}>{romanise(tl)}</span>
+</span>

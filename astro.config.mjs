@@ -18,4 +18,9 @@ export default defineConfig({
       useCdn: false,
     }),
   ],
+  vite: {
+    // Pre-bundle the globe's libraries when the dev server starts. Found late,
+    // they trigger a mid-session re-bundle and the page 504s on stale copies.
+    optimizeDeps: {include: ['d3-geo', 'topojson-client']},
+  },
 });

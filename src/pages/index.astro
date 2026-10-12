@@ -4,53 +4,131 @@ import Base from '../layouts/Base.astro'
 import ArtworkCard from '../components/ArtworkCard.astro'
 import HeroGallery from '../components/HeroGallery.astro'
 import EqBars from '../components/EqBars.astro'
+import Gloss from '../components/Gloss.astro'
 import {getArtworks, getExhibitions, getHomePage, getStudioEntries} from '../lib/sanity'
 import {ratioOf, urlFor} from '../lib/image'
+import {getStoreProduct} from '../lib/shopify'
+import {getStickerSet, stickerWidth} from '../lib/stickers'
 
-const [home, artworks, exhibitions, studioEntries] = await Promise.all([
+// The Shopify product handle featured in the "New drop" section; swap it for the next release.
+const NEW_DROP = 'migumag-v1'
+
+const [home, artworks, exhibitions, studioEntries, drop] = await Promise.all([
   getHomePage(),
   getArtworks(),
   getExhibitions(),
   getStudioEntries(),
+  getStoreProduct(NEW_DROP),
 ])
 
 const slides = home?.heroSlides ?? []
 const featured = artworks.slice(0, 5)
 const SWATCHES = ['--vermilion', '--mustard', '--forest', '--lavender', '--cobalt']
 
-const introVideo = home?.introVideo?.asset?.url
+// Where the stickers sit in the opener: [left %, top, size px, rotation, wide screens only].
+// Top is a % of the opener, or a CSS length; the ones hugging the "migu." logo use vw, because
+// the logo sits a fixed way down and scales with the screen width.
+// They're filled with the studio's sticker uploads in order (repeating if there are fewer);
+// size is the width of a square sticker, and wider ones get proportionally wider.
+const SLOTS: [number, number | string, number, number, boolean][] = [
+  // around the logo
+  [25, 'calc(40px + 5vw)', 84, -14, false],
+  [67, 'calc(28px + 3vw)', 76, 12, true],
+  [16, 'calc(60px + 19vw)', 88, 8, true],
+  [74, 'calc(56px + 18vw)', 92, -7, false],
+  [44, 'calc(20px + 1vw)', 70, -4, true],
+  // out in the margins
+  [5, 22, 104, -8, true],
+  [76, 1, 84, 10, false],
+  [84, 38, 100, 6, false],
+  [4, 52, 100, -12, true],
+  [80, 70, 104, -4, true],
+  [10, 84, 92, 7, true],
+  [88, 14, 80, -9, true],
+]
+const stickerSet = await getStickerSet()
+const stickers = SLOTS.map(([x, y, size, r, lg], i) => {
+  const s = stickerSet[i % stickerSet.length]
+  return {src: s.src, x, y: typeof y === 'number' ? `${y}%` : y, r, lg, w: stickerWidth(s, size)}
+})
+
+// Sketches that spill out of the laptop screen once the video is playing.
+// [file, final x %, final y % (from the screen's centre), width %, rotation, delay s]
+const SKETCHES: [number, number, number, number, number, number][] = [
+  [1, -58, -22, 42, -9, 0.6],
+  [2, 60, -20, 40, 7, 2.2],
+  [3, -62, 16, 26, 5, 3.8],
+  [4, 60, 24, 42, -6, 5.4],
+]
+
+const introVideo =home?.introVideo?.asset?.url
 const introPoster = home?.introPoster
   ? urlFor(home.introPoster).width(1800).fit('max').auto('format').url()
   : undefined
 ---
 
-<Base title="Migumind — Miguel Pacheco | Artist &amp; Designer">
-  <div class="page">
-    <section class="introhero" data-introhero>
-      <div class="bg">
-        {
-          introVideo ? (
-            <video
-              data-hero
-              data-bg
-              src={introVideo}
-              poster={introPoster}
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              aria-hidden="true"
-            />
-          ) : (
-            introPoster && <img src={introPoster} alt="" />
-          )
-        }
-      </div>
+<Base title="Migumind — Miguel Pacheco | Artist & Designer">
+  <div class="page home">
+    <section class="opener" data-opener>
+      <span class="hi">hi, i'm</span>
+      <h1 class="migu">
+        migu.
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            class="scribble"
+            pathLength="1"
+            d="M8 52 C6 20 40 6 62 9 C88 13 98 34 94 58 C90 84 58 95 34 90 C12 86 3 66 12 44 C18 30 30 22 46 20"
+          ></path>
+        </svg>
+      </h1>
+      <Gloss tl="mi-gu" class="center" />
 
-      <div class="over">
-        <h1 class="migu">Migu.</h1>
+      {
+        (introVideo || introPoster) && (
+          <div class="shotwrap">
+            <figure class="laptop" data-laptop>
+              <span class="body">
+                <span class="screen">
+                  {introVideo ? (
+                    <video
+                      data-hero
+                      src={introVideo}
+                      poster={introPoster}
+                      autoplay
+                      muted
+                      loop
+                      playsinline
+                      preload="metadata"
+                      aria-label="Miguel in the studio"
+                    />
+                  ) : (
+                    <img src={introPoster} alt="Miguel in the studio" />
+                  )}
+                </span>
+                <img class="shell" src="/home/laptop.webp" alt="" draggable="false" />
+                {SKETCHES.map(([n, x, y, w, r, d]) => (
+                  <img
+                    class="spill"
+                    src={`/home/sketch-${n}.webp`}
+                    alt=""
+                    draggable="false"
+                    style={`--x:${x};--y:${y};--w:${w}%;--r:${r}deg;--d:${d}s`}
+                  />
+                ))}
+              </span>
+              <figcaption>me, probably <span class="m">'26</span></figcaption>
+            </figure>
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 150 90">
+                <path pathLength="1" d="M4 80 C40 82 90 70 138 14 M138 14 L120 18 M138 14 L134 32"></path>
+              </svg>
+              <span>yeah that's me</span>
+            </div>
+          </div>
+        )
+      }
 
+      <div class="intro">
         <div class="meta m m11">
           <span>MIGUEL PACHECO</span>
           <span>ARTIST / DESIGNER / CREATIVE</span>
@@ -58,6 +136,7 @@ const introPoster = home?.introPoster
         </div>
 
         <h2 class="say">{home?.statementHeading ?? 'Painting, print and design are one practice'}</h2>
+        <Gloss tl="i-si-p a-t ga-wa" en="mind and work" />
 
         <div class="intro-copy">
           {
@@ -81,6 +160,19 @@ const introPoster = home?.introPoster
           {SWATCHES.map((c) => <i style={`background:var(${c})`}></i>)}
         </span>
       </div>
+
+      {
+        stickers.map(({src, x, y, w, r, lg}) => (
+          <img
+            class={`stk${lg ? ' lg-only' : ''}`}
+            src={src}
+            alt=""
+            draggable="false"
+            style={`left:${x}%;top:${y};--w:${w}px;--r:${r}deg`}
+          />
+        ))
+      }
+      <button class="chip pentoggle" type="button" data-pen aria-pressed="true">Pencil: on</button>
     </section>
 
     {
@@ -92,11 +184,49 @@ const introPoster = home?.introPoster
     }
 
     {
+      drop && (
+        <div class="wrap">
+          <section class="blk newdrop">
+            <div class="sh">
+              <div>
+                <h2>New drop</h2>
+                <Gloss tl="ba-go-ng la-ba-s" en="new release" />
+              </div>
+              <div class="r">
+                <span class="m dimmer">SHOP</span>
+                <a class="m dimmer" href="/shop">ALL →</a>
+              </div>
+            </div>
+            <a class="drop" href={drop.url}>
+              {drop.image && (
+                <span class="cover">
+                  <img src={drop.image.src} width={drop.image.width} height={drop.image.height} alt={`${drop.title} cover`} loading="lazy" />
+                </span>
+              )}
+              <span class="info">
+                <span class="m dim">OUT NOW / {drop.available ? 'AVAILABLE' : 'SOLD OUT'}</span>
+                <span class="ttl">{drop.title}</span>
+                {drop.blurb && <span class="blurb">{drop.blurb}</span>}
+                <span class="buy">
+                  <span class="price">{drop.price}</span>
+                  <span class="cta">Get your copy →</span>
+                </span>
+              </span>
+            </a>
+          </section>
+        </div>
+      )
+    }
+
+    {
       featured.length > 0 && (
         <div class="wrap">
           <section class="blk">
             <div class="sh">
-              <h2>Selected works</h2>
+              <div>
+                <h2>Selected works</h2>
+                <Gloss tl="pi-li-ng li-k-ha" en="selected works" />
+              </div>
               <div class="r">
                 <span class="m dimmer">ARCHIVE</span>
                 <a class="m dimmer" href="/artworks">ALL {artworks.length} →</a>
@@ -119,7 +249,10 @@ const introPoster = home?.introPoster
         studioEntries.length > 0 && (
           <section class="blk">
             <div class="sh">
-              <h2>Studio</h2>
+              <div>
+                <h2>Studio</h2>
+                <Gloss tl="ga-wa-a-n" en="workshop" />
+              </div>
               <div class="r">
                 <span class="m dimmer">PROCESS</span>
                 <a class="m dimmer" href="/studio">DRAG →</a>
@@ -145,7 +278,10 @@ const introPoster = home?.introPoster
         exhibitions.length > 0 && (
           <section class="blk" style="border-top:1px solid var(--rule)">
             <div class="sh">
-              <h2>Exhibitions</h2>
+              <div>
+                <h2>Exhibitions</h2>
+                <Gloss tl="ta-ng-ha-la-n" en="exhibitions" />
+              </div>
               <div class="r">
                 <span class="m dimmer">ARCHIVE</span>
                 <a class="m dimmer" href="/exhibitions">{String(exhibitions.length).padStart(2, '0')} →</a>
@@ -168,25 +304,109 @@ const introPoster = home?.introPoster
   </div>
 </Base>
 
+<canvas id="pencil" aria-hidden="true"></canvas>
+
 <script>
-  // Carries the hero type from paper-white to vermilion as the hero leaves.
-  const hero = document.querySelector<HTMLElement>('[data-introhero]')
-  if (hero) {
-    let frame = 0
-    const update = () => {
-      const span = (hero.offsetHeight || 1) * 0.36
-      const t = Math.min(1, Math.max(0, window.scrollY / span))
-      hero.style.setProperty('--hero-fade', t.toFixed(3))
+  const opener = document.querySelector<HTMLElement>('[data-opener]')
+
+  // The sketches spill out of the laptop once the video is actually playing.
+  // If the browser refuses to autoplay (iOS Low Power Mode, Android data saver),
+  // the first tap anywhere starts it; the sketches come out regardless after a beat.
+  const laptop = document.querySelector<HTMLElement>('[data-laptop]')
+  const intro = laptop?.querySelector<HTMLVideoElement>('video')
+  if (laptop) {
+    const go = () => laptop.classList.add('go')
+    if (!intro) go()
+    else if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      intro.addEventListener('playing', go, {once: true})
+      setTimeout(go, 4000)
+      intro.play().catch(() => {
+        const kick = () => intro.play().catch(() => {})
+        addEventListener('pointerdown', kick, {once: true})
+      })
     }
-    addEventListener(
-      'scroll',
-      () => {
-        cancelAnimationFrame(frame)
-        frame = requestAnimationFrame(update)
-      },
-      {passive: true},
-    )
-    addEventListener('resize', update, {passive: true})
-    update()
+  }
+
+  // Stickers can be peeled off and re-stuck anywhere inside the opener.
+  opener?.querySelectorAll<HTMLImageElement>('.stk').forEach((s) => {
+    let ox = 0
+    let oy = 0
+    s.addEventListener('pointerdown', (e) => {
+      const b = s.getBoundingClientRect()
+      s.setPointerCapture(e.pointerId)
+      s.classList.add('grab')
+      ox = e.clientX - b.left
+      oy = e.clientY - b.top
+    })
+    s.addEventListener('pointermove', (e) => {
+      if (!s.classList.contains('grab')) return
+      const p = opener.getBoundingClientRect()
+      s.style.left = `${e.clientX - ox - p.left}px`
+      s.style.top = `${e.clientY - oy - p.top}px`
+    })
+    s.addEventListener('pointerup', () => {
+      s.classList.remove('grab')
+      s.style.setProperty('--r', `${(Math.random() * 24 - 12).toFixed(1)}deg`)
+    })
+  })
+
+  // Pencil trail: the mouse leaves a faint graphite line that fades. Mouse only,
+  // off for reduced motion, and the loop sleeps whenever there is nothing to draw.
+  const cv = document.querySelector<HTMLCanvasElement>('#pencil')
+  const toggle = document.querySelector<HTMLButtonElement>('[data-pen]')
+  const ctx = cv?.getContext('2d')
+  if (cv && ctx && toggle && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const LIFE = 1400
+    let on = true
+    let pts: {x: number; y: number; t: number}[] = []
+    let running = false
+
+    // Match the canvas's displayed box (which excludes the scrollbar), at screen density.
+    const size = () => {
+      const w = document.documentElement.clientWidth
+      const h = document.documentElement.clientHeight
+      cv.width = Math.round(w * devicePixelRatio)
+      cv.height = Math.round(h * devicePixelRatio)
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
+    }
+    size()
+    addEventListener('resize', size, {passive: true})
+
+    const draw = (now: number) => {
+      ctx.clearRect(0, 0, innerWidth, innerHeight)
+      pts = pts.filter((p) => now - p.t < LIFE)
+      ctx.lineCap = 'round'
+      ctx.lineWidth = 1.2
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink-2')
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1]
+        const b = pts[i]
+        ctx.globalAlpha = (1 - (now - b.t) / LIFE) * 0.6
+        ctx.beginPath()
+        ctx.moveTo(a.x, a.y)
+        ctx.lineTo(b.x + (Math.random() - 0.5) * 0.8, b.y + (Math.random() - 0.5) * 0.8)
+        ctx.stroke()
+      }
+      running = pts.length > 0
+      if (running) requestAnimationFrame(draw)
+    }
+
+    addEventListener('pointermove', (e) => {
+      if (!on || e.pointerType !== 'mouse' || document.querySelector('.stk.grab')) return
+      pts.push({x: e.clientX, y: e.clientY, t: performance.now()})
+      if (!running) {
+        running = true
+        requestAnimationFrame(draw)
+      }
+    })
+    addEventListener('scroll', () => (pts = []), {passive: true})
+    toggle.addEventListener('click', () => {
+      on = !on
+      pts = []
+      toggle.textContent = `Pencil: ${on ? 'on' : 'off'}`
+      toggle.setAttribute('aria-pressed', String(on))
+    })
+  } else {
+    toggle?.remove()
   }
 </script>
