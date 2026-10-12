@@ -350,16 +350,19 @@ const introPoster = home?.introPoster
     })
   })
 
-  // Pencil trail: the mouse leaves a faint graphite line that fades. Mouse only,
-  // off for reduced motion, and the loop sleeps whenever there is nothing to draw.
+  // Pencil trail: the mouse (or a finger, on touch screens) leaves a faint graphite
+  // line that fades. Off for reduced motion, and the loop sleeps whenever there is
+  // nothing to draw.
   const cv = document.querySelector<HTMLCanvasElement>('#pencil')
   const toggle = document.querySelector<HTMLButtonElement>('[data-pen]')
   const ctx = cv?.getContext('2d')
   if (cv && ctx && toggle && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const LIFE = 1400
     let on = true
-    let pts: {x: number; y: number; t: number}[] = []
+    // `lift` marks the first point of a new stroke, so separate swipes aren't joined up.
+    let pts: {x: number; y: number; t: number; lift?: boolean}[] = []
     let running = false
+    let viaTouch = false // last input was a finger
 
     // Match the canvas's displayed box (which excludes the scrollbar), at screen density.
     const size = () => {
@@ -381,6 +384,7 @@ const introPoster = home?.introPoster
       for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1]
         const b = pts[i]
+        if (b.lift) continue
         ctx.globalAlpha = (1 - (now - b.t) / LIFE) * 0.6
         ctx.beginPath()
         ctx.moveTo(a.x, a.y)
@@ -391,15 +395,34 @@ const introPoster = home?.introPoster
       if (running) requestAnimationFrame(draw)
     }
 
-    addEventListener('pointermove', (e) => {
-      if (!on || e.pointerType !== 'mouse' || document.querySelector('.stk.grab')) return
-      pts.push({x: e.clientX, y: e.clientY, t: performance.now()})
+    const add = (x: number, y: number, lift = false) => {
+      pts.push({x, y, t: performance.now(), lift})
       if (!running) {
         running = true
         requestAnimationFrame(draw)
       }
+    }
+
+    addEventListener('pointermove', (e) => {
+      if (!on || e.pointerType !== 'mouse' || document.querySelector('.stk.grab')) return
+      viaTouch = false
+      add(e.clientX, e.clientY)
     })
-    addEventListener('scroll', () => (pts = []), {passive: true})
+
+    // Touch: a finger drag also scrolls the page, which cancels pointer events, so follow
+    // the raw touches instead. They keep coming while the page scrolls, and the line
+    // trails under the finger.
+    const finger = (e: TouchEvent, lift: boolean) => {
+      if (!on || e.touches.length !== 1 || document.querySelector('.stk.grab')) return
+      viaTouch = true
+      add(e.touches[0].clientX, e.touches[0].clientY, lift)
+    }
+    addEventListener('touchstart', (e) => finger(e, true), {passive: true})
+    addEventListener('touchmove', (e) => finger(e, false), {passive: true})
+
+    // A mouse-wheel scroll moves the page out from under the line, so wipe it. A finger
+    // scroll (and its glide after lifting off) is the drawing itself, so keep it.
+    addEventListener('scroll', () => { if (!viaTouch) pts = [] }, {passive: true})
     toggle.addEventListener('click', () => {
       on = !on
       pts = []

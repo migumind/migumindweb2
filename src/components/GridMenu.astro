@@ -1,0 +1,60 @@
+---
+// Full-screen grid menu: one tile per section, each with a hand-drawn line icon that
+// re-draws itself on hover/focus, a Baybayin gloss, and its own accent colour.
+import Gloss from './Gloss.astro'
+
+interface Props {
+  id?: string
+  section?: string
+  /** Render in place (for previews) instead of as a hidden overlay. */
+  inline?: boolean
+}
+const {id = 'gridmenu', section = '', inline = false} = Astro.props
+// Accents dark enough to need light text on hover.
+const DARK = ['--cobalt', '--forest']
+
+// Same sections and order as NAV in layouts/Base.astro.
+// [href, label, key, gloss syllables, gloss meaning, accent, icon]
+const ITEMS: [string, string, string, string, string, string, string][] = [
+  ['/artworks', 'Artworks', 'artworks', 'li-k-ha', 'creation', '--vermilion',
+    '<rect x="11" y="7" width="26" height="20" rx="1"/><path d="M15 23l6-7 5 5 3-3 4 5"/><circle cx="30" cy="12.5" r="2"/><path d="M24 27v6M18 27l-5 15M30 27l5 15M14 37h20"/>'],
+  ['/design', 'Graphic Design', 'design', 'di-se-n-yo', 'design', '--cobalt',
+    '<path d="M24 5l9 15-9 13-9-13z"/><path d="M24 5v13"/><circle cx="24" cy="20" r="2.2"/><path d="M17 37h14v6H17z"/><path d="M5 26c5-7 9 3 13-1M43 26c-5-7-9 3-13-1"/><circle cx="5" cy="26" r="1.6"/><circle cx="43" cy="26" r="1.6"/>'],
+  ['/exhibitions', 'Exhibitions', 'exhibitions', 'ta-ng-ha-la-n', 'exhibitions', '--forest',
+    '<path d="M14 3v4M34 3v4"/><rect x="7" y="8" width="14" height="18"/><rect x="27" y="8" width="14" height="12"/><path d="M11 21l3-4 3 3 2-2"/><path d="M8 34h32M8 38h32M11 38v6M37 38v6"/>'],
+  ['/events', 'Events', 'events', 'pa-g-ti-ti-po-n', 'gatherings', '--fluor',
+    '<rect x="13" y="17" width="14" height="26" rx="3"/><path d="M16 17v-4h8v4"/><path d="M20 13V9h6"/><path d="M13 27h14"/><path d="M32 6l4-2M33 11h5M32 16l4 2"/><circle cx="40" cy="25" r="1"/><circle cx="36" cy="29" r="1"/><circle cx="42" cy="31" r="1"/>'],
+  ['/shop', 'Shop', 'shop', 'ti-n-da-ha-n', 'store', '--mustard',
+    '<path d="M9 16h30l-2 27H11z"/><path d="M17 21v-6a7 7 0 0 1 14 0v6"/><path d="M17 31l4 4 9-9"/>'],
+  ['/about', 'About', 'about', 'a-ko', 'me', '--lavender',
+    '<path d="M13 21c0-8 4-13 11-13s11 5 11 13"/><path d="M11 21h26v4H11z"/><path d="M14 25c0 10 4 16 10 16s10-6 10-16"/><path d="M19 34c2 1.4 8 1.4 10 0"/><path d="M20 29h.01M28 29h.01"/><path d="M24 8V5"/>'],
+  ['/contact', 'Contact', 'contact', 'ku-mu-s-ta', 'say hi', '--sage',
+    '<rect x="6" y="15" width="34" height="23" rx="2"/><path d="M6 17l17 12 17-12"/><path d="M38 5c-1.6-2.1-4.8-1-4.3 1.6.4 2.1 4.3 4.2 4.3 4.2s3.9-2.1 4.3-4.2C42.8 4 39.6 2.9 38 5z"/>'],
+]
+---
+
+<div class={`gridmenu${inline ? ' inline' : ''}`} id={id} data-gridmenu hidden={!inline}>
+  <nav aria-label="Site">
+    <ul>
+      {
+        ITEMS.map(([href, label, key, tl, en, accent, icon], i) => (
+          <li style={`--acc:var(${accent});--on:var(${DARK.includes(accent) ? '--fixed-paper' : '--fixed-ink'});--i:${i}`}>
+            <a href={href} aria-current={section === key ? 'page' : undefined}>
+              <span class="no m">{String(i + 1).padStart(2, '0')}</span>
+              <svg class="ico" viewBox="0 0 48 48" aria-hidden="true" set:html={icon} />
+              <span class="lbl">{label}</span>
+              <Gloss tl={tl} en={en} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+</div>
+
+<script>
+  // Every stroke in an icon gets its own length so it can be drawn on.
+  document.querySelectorAll<SVGElement>('[data-gridmenu] .ico *').forEach((el) => {
+    el.setAttribute('pathLength', '1')
+  })
+</script>

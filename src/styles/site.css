@@ -62,9 +62,8 @@ header.nav{position:sticky;top:0;z-index:60;background:var(--paper);border-botto
 #burger{display:none;border:1px solid var(--ink);padding:4px 9px;font-family:var(--m);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase}
 #theme{border:1px solid var(--rule);padding:4px 8px;font-family:var(--m);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase}
 @media(max-width:900px){
-  .navlinks{position:fixed;inset:0 0 auto;top:0;background:var(--paper);flex-direction:column;align-items:flex-start;gap:0;padding:70px var(--pad) 26px;border-bottom:1px solid var(--ink);transform:translateY(-102%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:-1}
-  .navlinks.open{transform:none}
-  .navlinks a{font-size:15px;font-family:var(--f);font-variation-settings:"wght" 650;letter-spacing:-.01em;padding:11px 0;width:100%;border-bottom:1px solid var(--rule)}
+  /* the Menu button opens the grid menu (#menu-overlay) instead */
+  .navlinks{display:none}
   #burger{display:block}
 }
 
@@ -911,3 +910,32 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .hesse .part{display:block;margin:30px 0 10px;font-size:11px;letter-spacing:.2em;color:var(--vermilion)}
 .hesse .part::after{content:"";display:inline-block;width:40px;height:1px;margin-left:10px;vertical-align:middle;background:var(--rule)}
 .hesse p.last{font-variation-settings:"wght" 600;color:var(--ink);font-size:19px;line-height:1.5}
+
+/* ============ grid menu: tiles with hand-drawn line icons ============ */
+.gridmenu ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--ink);border:1px solid var(--ink)}
+.gridmenu li:last-child{grid-column:span 2}
+@media(max-width:900px){.gridmenu ul{grid-template-columns:repeat(3,1fr)}.gridmenu li:last-child{grid-column:1/-1}}
+@media(max-width:560px){.gridmenu ul{grid-template-columns:repeat(2,1fr)}}
+.gridmenu li{background:var(--paper);animation:gm-in .45s cubic-bezier(.2,.8,.2,1) calc(var(--i) * 55ms) both}
+.gridmenu a{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;min-height:clamp(150px,19vw,230px);
+  padding:clamp(14px,1.8vw,22px);color:var(--ink);transition:background .18s,color .18s}
+.gridmenu .no{position:absolute;left:clamp(14px,1.8vw,22px);top:clamp(12px,1.6vw,18px);color:var(--ink-3)}
+.gridmenu .ico{position:absolute;right:clamp(12px,1.6vw,20px);top:clamp(12px,1.6vw,18px);width:clamp(54px,6.4vw,84px);height:auto;
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.gridmenu .ico *{stroke-dasharray:1;stroke-dashoffset:0}
+.gridmenu .lbl{font-variation-settings:"wdth" 112,"wght" 820;font-size:clamp(20px,2.4vw,34px);line-height:.92;letter-spacing:-.03em;text-transform:uppercase}
+.gridmenu .gloss{opacity:.75}
+.gridmenu a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--acc);transform:scaleX(0);transform-origin:0 50%;transition:transform .25s}
+.gridmenu a:hover,.gridmenu a:focus-visible{background:var(--acc);color:var(--on)}
+.gridmenu a:hover .no,.gridmenu a:focus-visible .no{color:var(--on)}
+.gridmenu a:hover .ico *,.gridmenu a:focus-visible .ico *{animation:gm-draw .7s cubic-bezier(.6,0,.3,1) both}
+.gridmenu a:focus-visible{outline:2px solid var(--ink);outline-offset:-6px}
+.gridmenu a[aria-current="page"]::after{transform:none}
+@keyframes gm-in{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+@keyframes gm-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.gridmenu li,.gridmenu a:hover .ico *,.gridmenu a:focus-visible .ico *{animation:none}}
+
+.gridoverlay{position:fixed;inset:0;z-index:90;background:var(--paper);overflow:auto;padding:0 var(--pad) var(--pad)}
+.gridoverlay .gotop{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:11px 0;margin-bottom:var(--gut);
+  background:var(--paper);border-bottom:1px solid var(--ink);z-index:1}
+.gridoverlay .chip{color:var(--ink);cursor:pointer}

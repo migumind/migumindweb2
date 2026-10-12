@@ -2,6 +2,7 @@
 import '../styles/site.css'
 import VinylPlayer from '../components/VinylPlayer.astro'
 import SignupPopup from '../components/SignupPopup.astro'
+import GridMenu from '../components/GridMenu.astro'
 import {SIGNUP_ENABLED} from '../lib/shop'
 
 interface Props {
@@ -24,14 +25,16 @@ const {
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined
 const ogImage = Astro.site ? new URL('og-image.png', Astro.site).href : '/og-image.png'
 
+// The work first, then where it's shown, then the shop, then the person; contact last,
+// where people look for it. (Studio lives in the footer.)
 const NAV = [
   ['/artworks', 'Artworks', 'artworks'],
+  ['/design', 'Graphic Design', 'design'],
   ['/exhibitions', 'Exhibitions', 'exhibitions'],
   ['/events', 'Events', 'events'],
-  ['/studio', 'Studio', 'studio'],
-  ['/about', 'About', 'about'],
   ['/shop', 'Shop', 'shop'],
-  ['/design', 'Graphic Design', 'design'],
+  ['/about', 'About', 'about'],
+  ['/contact', 'Contact', 'contact'],
 ]
 ---
 
@@ -90,10 +93,19 @@ const NAV = [
         </nav>
         <div class="navtools">
           <button id="theme" type="button" aria-label="Toggle colour theme">Theme</button>
-          <button id="burger" type="button" aria-expanded="false" aria-controls="navlinks">Menu</button>
+          <button id="burger" type="button" aria-expanded="false" aria-controls="menu-overlay">Menu</button>
         </div>
       </div>
     </header>
+
+    <!-- Phones and tablets: the Menu button opens this grid in place of the row of links. -->
+    <div class="gridoverlay" id="menu-overlay" hidden>
+      <div class="gotop">
+        <a href="/" class="brand">Migumind</a>
+        <button class="chip" type="button" id="menu-close">Close ×</button>
+      </div>
+      <GridMenu id="sitemenu" section={section} inline />
+    </div>
 
     <main>
       <slot />
@@ -138,12 +150,26 @@ const NAV = [
     </footer>
 
     <script is:inline>
-      document.getElementById('burger').addEventListener('click', function () {
-        var n = document.getElementById('navlinks')
-        var open = n.classList.toggle('open')
-        this.setAttribute('aria-expanded', String(open))
-        this.textContent = open ? 'Close' : 'Menu'
-      })
+      ;(function () {
+        var burger = document.getElementById('burger')
+        var overlay = document.getElementById('menu-overlay')
+        var closeBtn = document.getElementById('menu-close')
+        function set(open) {
+          overlay.hidden = !open
+          burger.setAttribute('aria-expanded', String(open))
+          document.documentElement.style.overflow = open ? 'hidden' : ''
+          ;(open ? closeBtn : burger).focus()
+        }
+        burger.addEventListener('click', function () { set(true) })
+        closeBtn.addEventListener('click', function () { set(false) })
+        addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !overlay.hidden) set(false)
+        })
+        // Widening past the breakpoint swaps back to the row of links.
+        matchMedia('(min-width: 901px)').addEventListener('change', function (m) {
+          if (m.matches && !overlay.hidden) set(false)
+        })
+      })()
 
       document.getElementById('theme').addEventListener('click', function () {
         var r = document.documentElement
