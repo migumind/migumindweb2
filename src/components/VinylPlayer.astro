@@ -210,18 +210,153 @@ const delayOf = (i: number) => (((i * 29) % 17) / 21).toFixed(2)
         )
       }
 
+      /* ---------- deck sounds between songs, synthesised (no files to load) ---------- */
+      // With the audio graph up they run through the filter and volume, so the
+      // bars dance to them too; otherwise a small context of their own plays them.
+      var sfxOwn = null
+      function sfxOut() {
+        if (ctx && filter) return {c: ctx, out: filter, vol: 1}
+        var AC = window.AudioContext || window.webkitAudioContext
+        if (!AC) return null
+        if (!sfxOwn) sfxOwn = new AC()
+        if (sfxOwn.state === 'suspended') sfxOwn.resume()
+        return {c: sfxOwn, out: sfxOwn.destination, vol: Number(volIn ? volIn.value : 80) / 100}
+      }
+      function noise(c, secs, fill) {
+        var b = c.createBuffer(1, Math.round(c.sampleRate * secs), c.sampleRate)
+        var d = b.getChannelData(0)
+        for (var i = 0; i < d.length; i++) d[i] = fill ? fill(i, d) : Math.random() * 2 - 1
+        return b
+      }
+      function amp(o, level) {
+        var g = o.c.createGain()
+        g.gain.value = level * o.vol
+        g.connect(o.out)
+        return g
+      }
+
+      // Record scratch: noise through a resonant band-pass, swept forward and back
+      // like a hand rocking the platter, with a sawtooth riding the same curve.
+      function scratch() {
+        var o = sfxOut()
+        if (!o) return
+        var c = o.c
+        var t = c.currentTime + 0.01
+        var curve = [[0, 260], [0.11, 2600], [0.2, 420], [0.3, 2000], [0.46, 220]]
+        var src = c.createBufferSource()
+        src.buffer = noise(c, 0.5)
+        var bp = c.createBiquadFilter()
+        bp.type = 'bandpass'
+        bp.Q.value = 7
+        var saw = c.createOscillator()
+        saw.type = 'sawtooth'
+        var sawLp = c.createBiquadFilter()
+        sawLp.type = 'lowpass'
+        sawLp.frequency.value = 1600
+        curve.forEach(function (p, i) {
+          var f = i ? 'exponentialRampToValueAtTime' : 'setValueAtTime'
+          bp.frequency[f](p[1], t + p[0])
+          saw.frequency[f](p[1] / 6, t + p[0])
+        })
+        var env = c.createGain()
+        env.gain.setValueAtTime(0.0001, t)
+        env.gain.exponentialRampToValueAtTime(1, t + 0.02)
+        env.gain.setValueAtTime(1, t + 0.18)
+        env.gain.exponentialRampToValueAtTime(0.5, t + 0.21)
+        env.gain.exponentialRampToValueAtTime(1, t + 0.25)
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.48)
+        var sawGain = c.createGain()
+        sawGain.gain.value = 0.18
+        src.connect(bp).connect(env)
+        saw.connect(sawLp).connect(sawGain).connect(env)
+        env.connect(amp(o, 0.9))
+        src.start(t)
+        saw.start(t)
+        src.stop(t + 0.5)
+        saw.stop(t + 0.5)
+      }
+
+      // Run-out groove: faint hiss with sparse pops, looped until the next song lands.
+      function crackle() {
+        var o = sfxOut()
+        if (!o) return function () {}
+        var c = o.c
+        var pop = 0
+        var src = c.createBufferSource()
+        src.buffer = noise(c, 2.3, function () {
+          if (Math.random() < 0.0005) pop = (Math.random() * 0.7 + 0.3) * (Math.random() < 0.5 ? -1 : 1)
+          pop *= 0.86
+          return (Math.random() * 2 - 1) * 0.035 + pop
+        })
+        src.loop = true
+        var hp = c.createBiquadFilter()
+        hp.type = 'highpass'
+        hp.frequency.value = 700
+        var g = amp(o, 0.55)
+        g.gain.setValueAtTime(0.0001, c.currentTime)
+        g.gain.exponentialRampToValueAtTime(0.55 * o.vol || 0.0001, c.currentTime + 0.15)
+        src.connect(hp).connect(g)
+        src.start()
+        return function stop() {
+          var n = c.currentTime
+          g.gain.cancelScheduledValues(n)
+          g.gain.setValueAtTime(g.gain.value || 0.0001, n)
+          g.gain.exponentialRampToValueAtTime(0.0001, n + 0.35)
+          src.stop(n + 0.4)
+        }
+      }
+
+      // Needle drop: a sharp tick on top of a soft low thump.
+      function click() {
+        var o = sfxOut()
+        if (!o) return
+        var c = o.c
+        var src = c.createBufferSource()
+        src.buffer = noise(c, 0.09, function (i, d) {
+          var k = i / c.sampleRate
+          return (Math.random() * 2 - 1) * Math.exp(-k * 90) + Math.sin(k * 2 * Math.PI * 70) * Math.exp(-k * 35) * 0.8
+        })
+        src.connect(amp(o, 0.8))
+        src.start()
+      }
+
       // Switching songs only swaps the element's source. The Web Audio graph is
       // wired to the element, not the file, so the filter and analyser carry on.
+      // While it changes: scratch, crackle until the new song is ready, needle drop.
+      var switching = false
+      var stopCrackle = null
+      var swapTimer = 0
+      audio.addEventListener('playing', function () {
+        if (!stopCrackle && !switching) return
+        if (stopCrackle) stopCrackle()
+        stopCrackle = null
+        switching = false
+        click()
+      })
       function go(step) {
         if (tracks.length < 2) return
         at = (at + step + tracks.length) % tracks.length
+        var playOn = wanted
+        switching = playOn
         audio.src = tracks[at].src
         setNowPlaying(tracks[at].title)
         remember({track: at, position: 0})
-        if (wanted) {
+        if (!playOn) return
+        clearTimeout(swapTimer)
+        if (!stopCrackle) scratch()
+        // Let the scratch finish before the new song comes in.
+        swapTimer = setTimeout(function () {
+          if (!switching) return
+          if (!stopCrackle) stopCrackle = crackle()
           var p = audio.play()
-          if (p && p.catch) p.catch(function () {})
-        }
+          if (p && p.catch) {
+            p.catch(function () {
+              if (stopCrackle) stopCrackle()
+              stopCrackle = null
+              switching = false
+            })
+          }
+        }, 450)
       }
       audio.addEventListener('ended', function () {
         go(1)
@@ -354,6 +489,7 @@ const delayOf = (i: number) => (((i * 29) % 17) / 21).toFixed(2)
         remember({playing: true})
       })
       audio.addEventListener('pause', function () {
+        if (switching) return // a song change, not the visitor pausing
         paint(false)
         remember({playing: false})
       })
@@ -373,6 +509,15 @@ const delayOf = (i: number) => (((i * 29) % 17) / 21).toFixed(2)
       button.addEventListener('click', function () {
         if (root.getAttribute('data-playing') === 'true') {
           wanted = false
+          if (switching) {
+            // Paused mid-change: drop the queued song start and the crackle.
+            switching = false
+            clearTimeout(swapTimer)
+            if (stopCrackle) stopCrackle()
+            stopCrackle = null
+            paint(false)
+            remember({playing: false})
+          }
           audio.pause()
         } else {
           start(true)
