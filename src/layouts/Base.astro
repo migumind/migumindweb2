@@ -3,6 +3,7 @@ import '../styles/site.css'
 import VinylPlayer from '../components/VinylPlayer.astro'
 import SignupPopup from '../components/SignupPopup.astro'
 import GridMenu from '../components/GridMenu.astro'
+import {EMAIL, INSTAGRAM, INSTAGRAM_URL} from '../lib/social'
 import {SIGNUP_ENABLED} from '../lib/shop'
 
 interface Props {
@@ -24,6 +25,11 @@ const {
 // domain lives in exactly one place.
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined
 const ogImage = Astro.site ? new URL('og-image.png', Astro.site).href : '/og-image.png'
+
+// Work-in-progress banner across the top. Dismissing it is remembered per version,
+// so bumping WIP_VERSION brings it back for everyone with the next update.
+const WIP_VERSION = '1.1'
+const WIP = `Migumind v${WIP_VERSION} is still a work in progress… come back for updates`
 
 // The work first, then where it's shown, then the shop, then the person; contact last,
 // where people look for it. (Studio lives in the footer.)
@@ -66,7 +72,7 @@ const NAV = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Martian+Mono:wght@300;400;500;700&family=Yellowtail&family=Reenie+Beanie&family=Noto+Sans+Tagalog&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Martian+Mono:wght@300;400;500;700&family=Yellowtail&family=Reenie+Beanie&family=Noto+Sans+Tagalog&family=Pirata+One&family=Alfa+Slab+One&family=DM+Serif+Display:ital@1&display=swap"
     />
 
     <script is:inline>
@@ -76,9 +82,25 @@ const NAV = [
         if (t) document.documentElement.setAttribute('data-theme', t)
       } catch (e) {}
     </script>
+    <script is:inline define:vars={{WIP_VERSION}}>
+      // Likewise, a dismissed banner stays hidden from the first frame.
+      try {
+        if (localStorage.getItem('wip-banner') === WIP_VERSION) document.documentElement.classList.add('wip-off')
+      } catch (e) {}
+      window.__wip = WIP_VERSION
+    </script>
   </head>
 
   <body>
+    <div id="ribbon" role="region" aria-label="Site notice">
+      <p class="visually-hidden">{WIP}</p>
+      <div class="rtrack" aria-hidden="true">
+        <span class="rrun">
+          {[0, 1, 2, 3].map(() => <span class="m">{WIP} ✦</span>)}
+        </span>
+      </div>
+      <button type="button" id="ribbon-x">Got it</button>
+    </div>
     <header class="nav">
       <div class="navrow">
         <a href="/" class="brand">Migumind</a>
@@ -134,8 +156,8 @@ const NAV = [
         </div>
         <div class="col">
           <h4>Elsewhere</h4>
-          <a href="/contact">[INSTAGRAM]</a>
-          <a href="mailto:migupaint@gmail.com">[EMAIL]</a>
+          <a href={INSTAGRAM_URL} target="_blank" rel="noopener">@{INSTAGRAM}</a>
+          <a href={`mailto:${EMAIL}`}>[EMAIL]</a>
         </div>
         <div class="col">
           <h4>Register</h4>
@@ -170,6 +192,13 @@ const NAV = [
           if (m.matches && !overlay.hidden) set(false)
         })
       })()
+
+      document.getElementById('ribbon-x').addEventListener('click', function () {
+        document.documentElement.classList.add('wip-off')
+        try {
+          localStorage.setItem('wip-banner', window.__wip)
+        } catch (e) {}
+      })
 
       document.getElementById('theme').addEventListener('click', function () {
         var r = document.documentElement

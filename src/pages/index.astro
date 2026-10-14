@@ -5,6 +5,7 @@ import ArtworkCard from '../components/ArtworkCard.astro'
 import HeroGallery from '../components/HeroGallery.astro'
 import EqBars from '../components/EqBars.astro'
 import Gloss from '../components/Gloss.astro'
+import UpcomingEvents from '../components/UpcomingEvents.astro'
 import {getArtworks, getExhibitions, getHomePage, getStudioEntries} from '../lib/sanity'
 import {ratioOf, urlFor} from '../lib/image'
 import {getStoreProduct} from '../lib/shopify'
@@ -217,6 +218,10 @@ const introPoster = home?.introPoster
         </div>
       )
     }
+
+    <div class="wrap">
+      <UpcomingEvents posters />
+    </div>
 
     {
       featured.length > 0 && (

@@ -1,0 +1,26 @@
+---
+// "Name (@handle), Name (@handle)", with each handle linking to that Instagram.
+interface Props {
+  list: {name?: string; instagram?: string}[]
+}
+const people = Astro.props.list.filter((c) => c.name || c.instagram)
+const handle = (h: string) => h.replace(/^@/, '').trim()
+---
+
+<span class="collabs">
+  {
+    people.map((c, i) => (
+      <>
+        {i > 0 && ', '}
+        {c.instagram ? (
+          <a href={`https://instagram.com/${handle(c.instagram)}`} target="_blank" rel="noopener">
+            {c.name && <>{c.name} </>}
+            <span class="ig">@{handle(c.instagram)}</span>
+          </a>
+        ) : (
+          c.name
+        )}
+      </>
+    ))
+  }
+</span>

@@ -2,9 +2,11 @@
 import {PortableText} from 'astro-portabletext'
 import Base from '../../layouts/Base.astro'
 import EventLogo from '../../components/EventLogo.astro'
-import MediaDeck from '../../components/MediaDeck.astro'
+import PosterPin from '../../components/PosterPin.astro'
 import StickerWall from '../../components/StickerWall.astro'
 import {formatDate, getEvents, type EventItem} from '../../lib/sanity'
+import Collaborators from '../../components/Collaborators.astro'
+import {ratioOf, urlFor} from '../../lib/image'
 import {resolveGeo} from '../../lib/cities'
 
 export async function getStaticPaths() {
@@ -27,6 +29,31 @@ const geo = resolveGeo(e)
 const city = [geo?.city, e.country].filter(Boolean).join(', ')
 // Seed each page's wall differently so no two events look identical.
 const wallSeed = [...e.slug].reduce((s, c) => s + c.charCodeAt(0), 0)
+
+// Photos scattered like prints on a table: each tilted and nudged a little, the same every build.
+const photos = (e.images ?? [])
+  .filter((img) => img.asset)
+  .map((img, i) => ({
+    n: i + 1,
+    src: urlFor(img).width(800).fit('max').auto('format').url(),
+    full: urlFor(img).url(),
+    ratio: ratioOf(img, '4 / 3'),
+    r: (((wallSeed + i * 37) % 9) - 4) * 1.3,
+    y: ((wallSeed + i * 53) % 5) * 9 - 18,
+  }))
+// Clips sit among the prints: one after every couple of photos.
+const clips = (e.videos ?? []).filter((v) => v.url)
+const media: ({kind: 'photo'} & (typeof photos)[number] | {kind: 'video'; src: string; type?: string; n: number; r: number; y: number})[] = []
+let ci = 0
+photos.forEach((p, i) => {
+  media.push({kind: 'photo', ...p})
+  if (i % 2 === 1 && ci < clips.length) media.push(clip(ci++))
+})
+while (ci < clips.length) media.push(clip(ci++))
+function clip(i: number) {
+  const v = clips[i]
+  return {kind: 'video' as const, src: v.url!, type: v.mimeType, n: i + 1, r: (((wallSeed + i * 41) % 7) - 3) * 1.5, y: ((wallSeed + i * 29) % 4) * 10 - 15}
+}
 ---
 
 <Base title={`${e.title} — Events — Migumind`} section="events">
@@ -40,15 +67,33 @@ const wallSeed = [...e.slug].reduce((s, c) => s + c.charCodeAt(0), 0)
     </section>
 
     <div class="wrap">
-      <div class="evdetail">
-        <div>
+      <div class={`evdetail${e.poster?.asset ? '' : ' solo'}`}>
+        {e.poster?.asset && (
+          <div class="evposter">
+            <PosterPin poster={e.poster} title={e.title} byMigu={e.posterByMigu} eager />
+          </div>
+        )}
+
+        <div class="evinfo">
           <a class="m m11 dim evback" href="/events">← Globe + all events</a>
           <h1 class="evtitle">{e.title}</h1>
           <dl class="deflist">
             {e.date && <div><dt>Date</dt><dd>{formatDate(e.date)}</dd></div>}
+            {e.time && <div><dt>Time</dt><dd>{e.time}</dd></div>}
             {e.location && <div><dt>Venue</dt><dd>{e.location}</dd></div>}
             {city && <div><dt>City</dt><dd>{city}</dd></div>}
+            {
+              e.collaborators && e.collaborators.length > 0 && (
+                <div>
+                  <dt>With</dt>
+                  <dd>
+                    <Collaborators list={e.collaborators} />
+                  </dd>
+                </div>
+              )
+            }
           </dl>
+          {e.link && <a class="evtix" href={e.link} target="_blank" rel="noopener">Tickets / RSVP ↗</a>}
           {
             e.description && e.description.length > 0 && (
               <div class="richtext" style="margin-top:22px">
@@ -57,20 +102,31 @@ const wallSeed = [...e.slug].reduce((s, c) => s + c.charCodeAt(0), 0)
             )
           }
         </div>
-
-        <div class="evmedia">
-          {
-            e.images && e.images.length > 0 ? (
-              <MediaDeck images={e.images} alt={e.title} label={`${e.title} photographs`} />
-            ) : (
-              <div class="ph a43">
-                <span class="no">LIVE</span>
-                <span class="fn">ADD PHOTOGRAPHS IN THE STUDIO</span>
-              </div>
-            )
-          }
-        </div>
       </div>
+
+      {
+        media.length > 0 && (
+          <section class="evphotos" aria-label={`${e.title} photographs`}>
+            <span class="m dim">
+              FROM THE DAY / {[photos.length && `${String(photos.length).padStart(2, '0')} PHOTOS`, clips.length && `${String(clips.length).padStart(2, '0')} CLIPS`].filter(Boolean).join(' + ')}
+            </span>
+            <div class="scatter">
+              {media.map((m) =>
+                m.kind === 'photo' ? (
+                  <a class="snapshot" href={m.full} target="_blank" rel="noopener" style={`--r:${m.r}deg;--y:${m.y}px`}>
+                    <img src={m.src} alt={`${e.title}, photo ${m.n}`} loading="lazy" style={`aspect-ratio:${m.ratio}`} />
+                  </a>
+                ) : (
+                  <span class="snapshot clip" style={`--r:${m.r}deg;--y:${m.y}px`}>
+                    <video data-hero src={m.src} muted loop playsinline autoplay preload="metadata" aria-label={`${e.title}, clip ${m.n}`} />
+                    <span class="rec m" aria-hidden="true">● REC</span>
+                  </span>
+                ),
+              )}
+            </div>
+          </section>
+        )
+      }
 
       {
         (prev || next) && (

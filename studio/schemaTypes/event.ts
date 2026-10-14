@@ -10,6 +10,12 @@ export const LOGO_STYLES = [
   {title: 'Varsity script on red oval', value: 'varsity'},
   {title: 'Globe on green oval', value: 'globe'},
   {title: 'Heavy block letters', value: 'block'},
+  {title: 'Gothic blackletter in gold (tattoo, halloween)', value: 'gothic'},
+  {title: 'Garden: soft lowercase with a bloom', value: 'garden'},
+  {title: 'Market flyer: cyan slab on yellow', value: 'market'},
+  {title: 'Racing: italic with a chequered flag', value: 'racing'},
+  {title: 'Book: serif italic', value: 'book'},
+  {title: 'Board: chequerboard frame (chess, mahjong, game nights)', value: 'board'},
 ]
 
 export default defineType({
@@ -29,7 +35,47 @@ export default defineType({
       validation: (r) => r.required(),
       group: 'main',
     }),
-    defineField({name: 'date', type: 'date', group: 'main'}),
+    defineField({
+      name: 'date',
+      type: 'date',
+      group: 'main',
+      description: 'Events dated today or later show under "Upcoming events" on the home and events pages.',
+    }),
+    defineField({
+      name: 'time',
+      type: 'string',
+      group: 'main',
+      description: 'Optional, shown on upcoming events, e.g. "7pm – late".',
+    }),
+    defineField({
+      name: 'collaborators',
+      type: 'array',
+      group: 'main',
+      description: 'Who it\'s with. Shown on the event as "with @handle" links to their Instagram.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'collaborator',
+          fields: [
+            defineField({name: 'name', type: 'string', validation: (r) => r.required()}),
+            defineField({
+              name: 'instagram',
+              title: 'Instagram handle',
+              type: 'string',
+              description: 'Without the @, e.g. surplussydney',
+            }),
+          ],
+          preview: {select: {title: 'name', subtitle: 'instagram'}},
+        }),
+      ],
+    }),
+    defineField({
+      name: 'link',
+      title: 'Tickets / RSVP link',
+      type: 'url',
+      group: 'main',
+      description: 'Optional. Upcoming events get a button to it.',
+    }),
     defineField({name: 'location', title: 'Venue / location', type: 'string', group: 'main'}),
     defineField({
       name: 'city',
@@ -52,13 +98,28 @@ export default defineType({
       type: 'string',
       group: 'map',
       options: {list: LOGO_STYLES, layout: 'radio'},
-      description: 'How the event name is drawn, streetwear-badge style. Leave empty to pick one automatically.',
+      description: 'How the event name is drawn, streetwear-badge style. Leave empty and the title picks one that suits it (a market gets the flyer style, a halloween night goes gothic), or one at random.',
     }),
     defineField({
       name: 'description',
       type: 'array',
       of: [defineArrayMember({type: 'block'})],
       group: 'main',
+    }),
+    defineField({
+      name: 'poster',
+      type: 'image',
+      group: 'main',
+      description: 'The event poster or flyer. Gets its own section on the event page.',
+    }),
+    defineField({
+      name: 'posterByMigu',
+      title: 'I designed this poster',
+      type: 'boolean',
+      group: 'main',
+      initialValue: false,
+      description: 'Adds a little "designed by Migu" sticker to the poster.',
+      hidden: ({document}) => !document?.poster,
     }),
     defineField({
       name: 'images',
@@ -69,6 +130,14 @@ export default defineType({
         'Shown as a shuffleable stack. Drag in as many as you like — three or more reads best.',
       options: {layout: 'grid'},
       group: 'main',
+    }),
+    defineField({
+      name: 'videos',
+      type: 'array',
+      group: 'main',
+      description:
+        'Short clips from the night. They play silently on a loop among the photographs. Keep each one small (under ~10 MB).',
+      of: [defineArrayMember({type: 'file', options: {accept: 'video/*'}})],
     }),
     defineField({
       name: 'order',

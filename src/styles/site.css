@@ -47,8 +47,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .dim{color:var(--ink-2)} .dimmer{color:var(--ink-3)}
 
 /* ============ ribbon ============ */
-#ribbon{background:var(--vermilion);color:var(--fixed-ink);padding:6px var(--pad);display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap}
-#ribbon button{border:1px solid var(--fixed-ink);padding:2px 7px;font-family:var(--m);font-size:9px;letter-spacing:.06em;text-transform:uppercase}
+#ribbon{background:var(--vermilion);color:var(--fixed-ink);padding:6px var(--pad);display:flex;gap:14px;justify-content:space-between;align-items:center}
+#ribbon button{flex:none;border:1px solid var(--fixed-ink);padding:2px 7px;font-family:var(--m);font-size:9px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--fixed-ink)}
+#ribbon button:hover{background:var(--fixed-ink);color:var(--vermilion)}
+/* the notice scrolls across in a loop: four copies, slid left by half (two copies) so it never jumps */
+#ribbon .rtrack{flex:1 1 auto;min-width:0;overflow:hidden;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+#ribbon .rrun{display:flex;width:max-content;animation:np-scroll 34s linear infinite}
+#ribbon .rrun .m{padding-right:2.4em;font-size:9.5px;white-space:nowrap}
+#ribbon:hover .rrun{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){#ribbon .rrun{animation:none}}
+.wip-off #ribbon{display:none}
 
 /* ============ nav ============ */
 header.nav{position:sticky;top:0;z-index:60;background:var(--paper);border-bottom:1px solid var(--ink)}
@@ -622,17 +631,11 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .ctarow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
 
 /* ============ graphic design ============ */
-.folio{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
-.folio summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:clamp(14px,2.2vw,24px) 0;transition:padding-left .18s}
-.folio summary::-webkit-details-marker{display:none}
-.folio summary:hover{padding-left:12px}
-.folio summary .t{font-variation-settings:"wdth" 110,"wght" 800;font-size:clamp(22px,3.6vw,42px);line-height:.95;letter-spacing:-.028em;text-transform:uppercase}
-.folio .hint .close,.folio[open] .hint .open{display:none}
-.folio[open] .hint .close{display:inline}
+.folio{border-top:1px solid var(--ink);scroll-margin-top:70px}
+.folio-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding:clamp(14px,2.2vw,24px) 0}
+.folio-head .t{margin:0;font-variation-settings:"wdth" 110,"wght" 800;font-size:clamp(22px,3.6vw,42px);line-height:.95;letter-spacing:-.028em;text-transform:uppercase}
 .folio-body{padding-bottom:clamp(20px,3vw,36px);display:flex;flex-direction:column;align-items:center;gap:18px}
 .folio-body img{display:block;width:100%;max-width:1100px;height:auto;border:1px solid var(--rule);background:var(--paper-2)}
-.folio-close{border:1px solid var(--ink);padding:8px 14px}
-.folio-close:hover{background:var(--ink);color:var(--paper)}
 
 .comm{gap:12px}
 .comm .richtext{font-size:14px;color:var(--ink-2)}
@@ -643,12 +646,21 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .comm.tpl h3,.comm.tpl .under,.comm.tpl .sm{color:var(--ink-3)}
 
 /* Corner book flip, carried over from the 2024 portfolio site. Bottom-left so it
-   clears the vinyl player in the other corner. */
-.bookflip{position:fixed;left:clamp(12px,2vw,26px);bottom:clamp(12px,2vw,26px);z-index:80;padding:0;
-  width:clamp(90px,10vw,130px);border-radius:4px;overflow:hidden;line-height:0;transition:box-shadow .3s ease,transform .18s}
+   clears the vinyl player in the other corner; × tucks it away (remembered), and a
+   small tab brings it back. */
+.bookflip-wrap{position:fixed;left:clamp(12px,2vw,26px);bottom:clamp(12px,2vw,26px);z-index:80;width:clamp(170px,20vw,280px)}
+.bookflip{display:block;border-radius:6px;overflow:hidden;line-height:0;transition:box-shadow .3s ease,transform .18s;
+  box-shadow:0 10px 24px -10px rgba(0,0,0,.45)}
 .bookflip img{width:100%;height:auto;display:block}
-.bookflip:hover{box-shadow:0 0 20px var(--mustard);transform:translateY(-2px)}
-.bookflip[aria-expanded="true"]{box-shadow:0 0 0 2px var(--mustard)}
+.bookflip:hover{box-shadow:0 0 22px var(--mustard);transform:translateY(-2px)}
+.bookflip-x{position:absolute;top:-10px;right:-10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--ink);
+  background:var(--paper);color:var(--ink);font:600 16px/1 var(--f);cursor:pointer;display:grid;place-items:center;padding:0;
+  box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.bookflip-x:hover{background:var(--ink);color:var(--paper)}
+.bookflip-show{position:fixed;left:clamp(12px,2vw,26px);bottom:clamp(12px,2vw,26px);z-index:80;border:1px solid var(--ink);
+  background:var(--paper);color:var(--ink);padding:6px 10px;font-size:9px;cursor:pointer}
+.bookflip-show:hover{background:var(--ink);color:var(--paper)}
+@media(max-width:520px){.bookflip-wrap{width:140px}}
 
 /* ============ event logos (streetwear badges) ============ */
 .elogo{--ink:#141613;--cut:#fff;position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
@@ -685,6 +697,30 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .elogo-globe .name{position:relative;z-index:1;background:#38D14B;padding:.06em .25em;box-shadow:0 0 0 .07em var(--ink)}
 .elogo-block .name{font-variation-settings:"wdth" 125,"wght" 900;letter-spacing:-.05em;font-size:1.2em;
   -webkit-text-stroke:.16em var(--cut);paint-order:stroke fill}
+
+/* themed styles, chosen from the event's own name */
+/* gothic: gold blackletter on black, framed in gold rule (tattoo flash, halloween) */
+.elogo-gothic{background:#0f0f0d;color:#C9A24B;padding:.5em 1em .55em;border:.06em solid #C9A24B;
+  box-shadow:inset 0 0 0 .14em #0f0f0d,inset 0 0 0 .18em #C9A24B,0 0 0 .13em var(--cut);border-radius:.1em}
+.elogo-gothic .name{font-family:"Pirata One",serif;font-size:1.25em;line-height:1;letter-spacing:.01em}
+.elogo-gothic .post{font-family:var(--f);color:#F4F1E8;font-size:.26em;letter-spacing:.3em}
+/* garden: soft lowercase teal on cream with an orange bloom (picnics, parks) */
+.elogo-garden{background:#F3F1E4;border-radius:1.2em;padding:.5em 1em .6em;border:.06em dashed #3F8F5A;box-shadow:0 0 0 .13em var(--cut)}
+.elogo-garden .name{color:#3FA0B8;font-variation-settings:"wdth" 108,"wght" 850;text-transform:lowercase;letter-spacing:-.055em;font-size:1.1em}
+.elogo-garden .bloom{position:absolute;right:-.25em;top:-.45em;font-size:1em;color:#F07E1E;rotate:-12deg;line-height:1}
+/* market: chunky cyan slab on acid yellow, like a market flyer */
+.elogo-market{background:#E4F23A;padding:.45em .8em .5em;box-shadow:0 0 0 .07em var(--ink),0 0 0 .18em var(--cut)}
+.elogo-market .name{font-family:"Alfa Slab One",serif;color:#2FA4DD;text-transform:uppercase;font-size:1.15em;line-height:.95;letter-spacing:-.01em;max-width:7em}
+/* racing: slanted italic with speed lines and a chequered flag bar */
+.elogo-racing{padding:.35em .9em .5em;background:#F4F1E8;transform:skewX(-12deg);box-shadow:0 0 0 .07em var(--ink),0 0 0 .18em var(--cut)}
+.elogo-racing .name{font-variation-settings:"wdth" 125,"wght" 900;font-style:italic;text-transform:uppercase;letter-spacing:-.03em;color:#E0452B;
+  text-shadow:-.08em 0 0 #F4F1E8,-.16em 0 0 rgba(224,69,43,.35),-.3em 0 0 rgba(224,69,43,.15)}
+.elogo-racing .flag{display:block;width:100%;height:.28em;margin-top:.22em;
+  background:conic-gradient(var(--ink) 25%,#fff 0 50%,var(--ink) 0 75%,#fff 0) 0 0/.28em .28em}
+/* book: serif italic on paper with a flourish underline */
+.elogo-book{background:#FBF7EC;padding:.5em 1em .65em;border-radius:.15em;box-shadow:0 0 0 .05em #7A1E2B,0 0 0 .16em var(--cut)}
+.elogo-book .name{font-family:"DM Serif Display",serif;font-style:italic;color:#7A1E2B;font-size:1.15em;line-height:1;letter-spacing:-.01em}
+.elogo-book .name::after{content:"";display:block;width:60%;height:.12em;margin:.18em auto 0;border-radius:50%;border-bottom:.05em solid #7A1E2B}
 
 /* ============ sticker wall ============ */
 .stickerwall{--sz:clamp(110px,14vw,230px);position:absolute;inset:-5% -3%;z-index:0;pointer-events:none;user-select:none}
@@ -748,6 +784,14 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
   border:2px solid var(--fixed-ink);font:600 17px/1 var(--m);box-shadow:2px 2px 0 var(--fixed-ink)}
 .globe-ctl button:hover{background:#E8D33A}
 .globe-ctl button:active{transform:translate(2px,2px);box-shadow:none}
+/* city view: a way back to the globe, and which city this is */
+.globe-city{position:absolute;left:0;top:4%;z-index:8;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.globe-city[hidden]{display:none}
+.globe-back{background:var(--fixed-paper);color:var(--fixed-ink);border:2px solid var(--fixed-ink);box-shadow:2px 2px 0 var(--fixed-ink);
+  padding:7px 11px;font:600 11px/1 var(--m);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.globe-back:hover{background:#E8D33A}
+.globe-back:active{transform:translate(2px,2px);box-shadow:none}
+.globe-city .m{background:var(--fixed-ink);color:var(--fixed-paper);padding:4px 7px;font-size:8.5px;letter-spacing:.1em}
 
 /* ============ events: list ============ */
 .evlist{list-style:none;margin:0;padding:0}
@@ -771,8 +815,11 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .evhero{position:relative;overflow:hidden;min-height:clamp(240px,40vh,440px);display:grid;place-items:center;padding:40px var(--pad)}
 .evhero-logo{position:relative;z-index:1;font-size:clamp(24px,5.4vw,64px);filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));transform:rotate(-2deg)}
 .evhero-no{position:absolute;z-index:1;left:var(--pad);bottom:14px;background:var(--fixed-ink);color:var(--fixed-paper);padding:6px 10px}
-.evdetail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:clamp(24px,5vw,72px);padding-block:clamp(28px,4vw,56px);align-items:start}
-@media(max-width:820px){.evdetail{grid-template-columns:1fr}}
+.evdetail{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(28px,6vw,88px);padding-block:clamp(36px,5vw,72px);align-items:start}
+.evdetail.solo{grid-template-columns:minmax(0,760px)}
+/* the poster leads: pinned up beside the details, pulled up into the sticker wall a touch */
+.evdetail .evposter{margin-top:clamp(-90px,-6vw,-30px);position:relative;z-index:2}
+@media(max-width:820px){.evdetail{grid-template-columns:1fr}.evdetail .evposter{margin-top:-40px}.evdetail .pinned{width:min(420px,88%)}}
 .evback{display:inline-block;margin-bottom:18px}
 .evback:hover{color:var(--ink)}
 .evtitle{font-variation-settings:"wdth" 106,"wght" 780;font-size:clamp(24px,3.2vw,40px);letter-spacing:-.028em;line-height:1;text-transform:uppercase;margin:0 0 6px}
@@ -939,3 +986,88 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .gridoverlay .gotop{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:11px 0;margin-bottom:var(--gut);
   background:var(--paper);border-bottom:1px solid var(--ink);z-index:1}
 .gridoverlay .chip{color:var(--ink);cursor:pointer}
+
+/* ============ upcoming events: calendar tiles ============ */
+.uplist{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.uplist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:clamp(14px,2.6vw,32px);align-items:center;
+  padding:clamp(14px,1.8vw,22px) 0;border-bottom:1px solid var(--rule)}
+.uplist .cal{display:flex;flex-direction:column;align-items:center;width:clamp(64px,7vw,84px);border:1px solid var(--ink);background:var(--paper);
+  box-shadow:4px 4px 0 var(--fluor);rotate:-2deg}
+.uplist li:nth-child(even) .cal{rotate:2deg;box-shadow:4px 4px 0 var(--mustard)}
+.uplist .cal .mo{display:block;width:100%;text-align:center;background:var(--ink);color:var(--paper);padding:3px 0;font-size:9px;letter-spacing:.12em}
+.uplist .cal .dd{font-variation-settings:"wdth" 110,"wght" 850;font-size:clamp(28px,3.4vw,40px);line-height:1;padding:4px 0 0;letter-spacing:-.03em}
+.uplist .cal .wd{font-size:8px;color:var(--ink-3);padding:2px 0 5px;letter-spacing:.12em}
+.uplist .info{display:flex;flex-direction:column;gap:6px;min-width:0}
+.uplist .ttl{font-variation-settings:"wdth" 108,"wght" 780;font-size:clamp(18px,2.2vw,28px);line-height:1.05;letter-spacing:-.02em;text-transform:uppercase}
+.uplist .ttl:hover{color:var(--vermilion)}
+.uplist .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.uplist .cta{border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 13px;font-family:var(--m);font-size:9.5px;
+  letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.uplist .cta:hover{background:var(--vermilion);border-color:var(--vermilion)}
+.uplist .chip{color:var(--ink);white-space:nowrap}
+@media(max-width:620px){.uplist li{grid-template-columns:auto minmax(0,1fr)}.uplist .acts{grid-column:2;justify-content:flex-start}}
+.upempty{border:1px dashed var(--rule);padding:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:10px}
+.upempty .lede{margin:0}
+.upempty a{color:var(--ink);border-bottom:1px solid var(--vermilion)}
+.collabs a{border-bottom:1px solid var(--rule)}
+.collabs a:hover{border-bottom-color:var(--vermilion);color:var(--vermilion)}
+.collabs .ig{color:var(--ink-2)}
+.uplist .with{color:var(--ink-2);text-transform:none;letter-spacing:.02em}
+.evtix{display:inline-block;margin-top:16px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:10px 16px;
+  font-family:var(--m);font-size:10px;letter-spacing:.07em;text-transform:uppercase}
+.evtix:hover{background:var(--vermilion);border-color:var(--vermilion)}
+.contact .igrow{display:inline-flex;align-items:center;gap:10px;margin-top:14px;font-variation-settings:"wght" 700;font-size:clamp(16px,1.8vw,20px)}
+.contact .igrow svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.contact .igrow .dim{font-variation-settings:normal}
+.contact .igrow:hover span:first-of-type{color:var(--vermilion)}
+.hesse .aboutlinks{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:28px 0 0;color:var(--ink-3)}
+.hesse .aboutlinks a{color:var(--ink);border-bottom:1px solid var(--vermilion)}
+
+/* ============ event poster: taped to the wall, with a "designed by migu." die-cut sticker ============ */
+.pinned{position:relative;margin:0 auto;width:min(560px,100%);rotate:-1.2deg}
+.pinned img{display:block;width:100%;height:auto;object-fit:cover;background:var(--paper-3);
+  box-shadow:0 2px 0 var(--rule),0 26px 40px -24px rgba(0,0,0,.55)}
+.pinned .tape{position:absolute;top:-12px;width:96px;height:26px;background:rgba(239,177,0,.55);box-shadow:0 1px 2px rgba(0,0,0,.12);z-index:1}
+.pinned .tape.t1{left:-18px;rotate:-24deg}
+.pinned .tape.t2{right:-18px;rotate:22deg}
+.designedby{position:absolute;right:-22px;bottom:-26px;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:clamp(96px,14vw,124px);aspect-ratio:1;border-radius:50%;background:var(--vermilion);color:#fff;
+  box-shadow:0 0 0 5px #fff,0 8px 16px rgba(0,0,0,.3);rotate:12deg;transition:rotate .25s,scale .25s}
+.designedby::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.35),transparent 42%)}
+.designedby .m{font-size:clamp(7px,.9vw,8.5px);letter-spacing:.14em}
+.designedby .who{font-variation-settings:"wdth" 116,"wght" 860;font-size:clamp(26px,3.6vw,34px);line-height:.9;letter-spacing:-.05em}
+.pinned:hover .designedby{rotate:-4deg;scale:1.06}
+@media(max-width:600px){.designedby{right:-6px;bottom:-20px}}
+
+/* event photos, scattered like prints on a table */
+.evphotos{padding-block:clamp(10px,2vw,24px) clamp(30px,5vw,60px);border-top:1px solid var(--rule)}
+.evphotos > .m{display:block;margin:18px 0 clamp(18px,3vw,32px)}
+.evphotos .scatter{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(150px,22vw,260px),1fr));gap:clamp(18px,3vw,40px);align-items:start}
+.evphotos .snapshot{display:block;background:#fbfaf5;padding:8px 8px 26px;rotate:var(--r);translate:0 var(--y);
+  box-shadow:0 1px 2px rgba(0,0,0,.15),0 16px 28px -18px rgba(0,0,0,.5);transition:rotate .2s,scale .2s}
+.evphotos .snapshot img{display:block;width:100%;height:auto;object-fit:cover}
+.evphotos .snapshot:hover{rotate:0deg;scale:1.04;z-index:1;position:relative}
+
+/* home: upcoming posters pasted up in a row, each at its own tilt and height, overlapping a little */
+.posterwall{display:flex;justify-content:center;align-items:flex-start;padding:clamp(24px,4vw,48px) clamp(8px,2vw,24px) clamp(34px,5vw,64px)}
+.posterwall .pinned{flex:0 1 auto;width:clamp(170px,23vw,300px);margin:0 clamp(-22px,-1.4vw,-8px);z-index:calc(10 - var(--i))}
+.posterwall .pinned:nth-child(odd){rotate:calc(-2deg - var(--i) * .6deg)}
+.posterwall .pinned:nth-child(even){rotate:calc(2.4deg + var(--i) * .4deg);translate:0 26px}
+.posterwall .pinned:nth-child(3n){translate:0 -10px}
+.posterwall .pinned{transition:scale .2s}
+.posterwall .pinned:hover{z-index:20;scale:1.03}
+.posterwall .designedby{width:clamp(70px,8vw,92px);right:-12px;bottom:-16px}
+.posterwall .datetag{position:absolute;left:-8px;bottom:14px;z-index:2;background:var(--ink);color:var(--paper);padding:4px 8px;font-size:10px;letter-spacing:.1em;rotate:-4deg}
+@media(max-width:760px){
+  .posterwall{justify-content:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;padding-inline:16px;gap:20px;margin-inline:calc(var(--pad) * -1)}
+  .posterwall .pinned{flex:0 0 62%;margin:0;scroll-snap-align:center}
+}
+.evphotos .clip{position:relative}
+.evphotos .clip video{display:block;width:100%;height:auto;aspect-ratio:9/16;object-fit:cover;background:#111}
+.evphotos .clip .rec{position:absolute;left:14px;top:14px;color:#ff4a3d;font-size:9px;letter-spacing:.12em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+/* board: bold red caps on cream inside a chequerboard frame (chess, mahjong, game nights) */
+.elogo-board{padding:.6em 1em;background:#F4F1E8;
+  border:.32em solid transparent;border-image:conic-gradient(#141613 25%,#F4F1E8 0 50%,#141613 0 75%,#F4F1E8 0) 0 / .32em .32em round;
+  box-shadow:0 0 0 .05em var(--ink),0 0 0 .16em var(--cut)}
+.elogo-board .name{font-variation-settings:"wdth" 92,"wght" 900;text-transform:uppercase;color:#C8102E;letter-spacing:-.01em;font-size:1.05em;line-height:.95}

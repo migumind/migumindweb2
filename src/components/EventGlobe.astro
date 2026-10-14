@@ -36,6 +36,10 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
 >
   <canvas class="globe-canvas"></canvas>
   <div class="globe-pins"></div>
+  <div class="globe-city" data-city-tag hidden>
+    <button type="button" class="globe-back" data-city-back>← Globe</button>
+    <span class="m">SYDNEY / 33.87°S 151.21°E</span>
+  </div>
   <div class="globe-ctl">
     <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
     <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
@@ -58,6 +62,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
   import landGrid from '../lib/landgrid.json'
   // Low-poly land + highlighted countries, prebuilt by scripts/globe-shapes.mjs.
   import shapes from '../lib/globe-shapes.json'
+  import {SYDNEY, inSydney} from '../lib/sydney-map'
 
   type Pin = {id: string; slug: string; city?: string; lat: number; lng: number}
 
@@ -133,6 +138,16 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     let H = 0
     let R = 0
     let dpr = 1
+
+    // City view: a flat, simplified Sydney printed inside the same lens. `cityA` fades it
+    // in over the globe; `cityK` and `cityC` are its own zoom and centre ([lng, lat]).
+    const CITY_K_MAX = 7
+    let cityOn = false
+    let cityA = 0
+    let cityK = 1
+    let cityC: [number, number] = [...SYDNEY.center]
+    const cosLat = Math.cos((SYDNEY.center[1] * Math.PI) / 180)
+    const tag = root.querySelector<HTMLElement>('[data-city-tag]')!
 
     // ---------- textures ----------
     const shade = document.createElement('canvas')
@@ -252,6 +267,13 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
         grid()
       }
 
+      if (cityA > 0) {
+        ctx.save()
+        ctx.globalAlpha = cityA
+        drawCity(cx, cy, lens)
+        ctx.restore()
+      }
+
       // Halftone shading: dots fade in toward the edge of the sphere.
       sctx.setTransform(1, 0, 0, 1, 0, 0)
       sctx.globalCompositeOperation = 'source-over'
@@ -292,6 +314,135 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       ctx.strokeStyle = P.dark
       ctx.stroke()
     }
+
+    // ---------- city view ----------
+    // Pixels per degree of latitude: the whole map fits the lens at cityK = 1.
+    function cityScale(lens: number) {
+      const [w, so, e, n] = SYDNEY.bbox
+      return ((2 * lens * 0.98) / Math.max((e - w) * cosLat, n - so)) * cityK
+    }
+    function cityXY(lng: number, lat: number, cx = W / 2, cy = H / 2, lens = Math.min(R * k, R * 1.1)): [number, number] {
+      const s = cityScale(lens)
+      return [cx + (lng - cityC[0]) * cosLat * s, cy - (lat - cityC[1]) * s]
+    }
+
+    // Same two inks as the globe: sea, a pink land plate (Australia's ink) over its
+    // off-register shadow, a coordinate grid, and place names in the site's mono.
+    function drawCity(cx: number, cy: number, lens: number) {
+      const xy = (p: [number, number]) => cityXY(p[0], p[1], cx, cy, lens)
+      ctx.fillStyle = P.ocean
+      ctx.fillRect(cx - lens, cy - lens, lens * 2, lens * 2)
+
+      const outline = new Path2D()
+      SYDNEY.land.forEach((p, i) => {
+        const [x, y] = xy(p)
+        i ? outline.lineTo(x, y) : outline.moveTo(x, y)
+      })
+      outline.closePath()
+      ctx.save()
+      ctx.translate(2.2, 1.8)
+      ctx.fillStyle = P.dark
+      ctx.fill(outline)
+      ctx.restore()
+      ctx.fillStyle = HIGHLIGHT.au
+      ctx.fill(outline)
+      ctx.lineWidth = 1
+      ctx.strokeStyle = P.dark
+      ctx.stroke(outline)
+
+      // Grid every 0.05°, faint, like the globe's graticule.
+      ctx.beginPath()
+      const [w, so, e, n] = SYDNEY.bbox
+      for (let g = Math.ceil(w * 20) / 20; g <= e; g += 0.05) {
+        ctx.moveTo(...xy([g, so]))
+        ctx.lineTo(...xy([g, n]))
+      }
+      for (let g = Math.ceil(so * 20) / 20; g <= n; g += 0.05) {
+        ctx.moveTo(...xy([w, g]))
+        ctx.lineTo(...xy([e, g]))
+      }
+      ctx.lineWidth = 0.8
+      ctx.strokeStyle = P.grid
+      ctx.globalAlpha *= 0.45
+      ctx.stroke()
+      ctx.globalAlpha = cityA
+
+      const size = Math.max(9, Math.min(13, lens * 0.045)) * Math.min(1.4, Math.sqrt(cityK))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      for (const [lng, lat, text, kind] of SYDNEY.labels) {
+        const [x, y] = xy([lng, lat])
+        ctx.font = kind === 'water' ? `italic 500 ${size}px "Martian Mono", monospace` : `600 ${size}px "Martian Mono", monospace`
+        ctx.fillStyle = kind === 'water' ? P.land : P.dark
+        ctx.fillText(kind === 'water' ? text : text.toUpperCase(), x, y)
+      }
+    }
+
+    function fadeCity(to: 0 | 1, ms = 380, then?: () => void) {
+      const from = cityA
+      const t0 = performance.now()
+      const step = (now: number) => {
+        const t = reduceMotion ? 1 : Math.min(1, (now - t0) / ms)
+        cityA = from + (to - from) * t
+        request()
+        if (t < 1) requestAnimationFrame(step)
+        else then?.()
+      }
+      requestAnimationFrame(step)
+    }
+
+    function enterCity() {
+      if (cityOn) return
+      closePopover()
+      cityK = 1
+      cityC = [...SYDNEY.center]
+      // Dive the globe into Sydney, then print the city map over it.
+      animateTo(SYDNEY.center, K_MAX * 0.75, 800)
+      setTimeout(() => {
+        cityOn = true
+        tag.hidden = false
+        root.classList.add('city')
+        fadeCity(1)
+      }, reduceMotion ? 0 : 620)
+    }
+
+    function exitCity() {
+      if (!cityOn) return
+      closePopover()
+      cityOn = false
+      tag.hidden = true
+      root.classList.remove('city')
+      fadeCity(0, 300, () => animateTo(home, 1))
+    }
+
+    function cityZoomTo(to: [number, number], toK: number, ms = 450) {
+      const from: [number, number] = [...cityC]
+      const fromK = cityK
+      toK = Math.max(1, Math.min(CITY_K_MAX, toK))
+      const t0 = performance.now()
+      const step = (now: number) => {
+        const t = reduceMotion ? 1 : Math.min(1, (now - t0) / ms)
+        const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+        cityK = fromK * Math.pow(toK / fromK, e)
+        cityC = clampCity([from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e])
+        request()
+        if (t < 1) requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    }
+
+    // Keep the map under the lens: at cityK = 1 it's centred; zoomed in, it can pan to its edges.
+    function clampCity([lng, lat]: [number, number]): [number, number] {
+      const [w, so, e, n] = SYDNEY.bbox
+      const f = 1 - 1 / cityK
+      const hx = ((e - w) / 2) * f
+      const hy = ((n - so) / 2) * f
+      const mx = (w + e) / 2
+      const my = (so + n) / 2
+      return [Math.max(mx - hx, Math.min(mx + hx, lng)), Math.max(my - hy, Math.min(my + hy, lat))]
+    }
+
+    root.querySelector('[data-city-back]')!.addEventListener('click', exitCity)
 
     // Land fill, with its dark plate printed slightly off-register underneath.
     function plate(geo: any) {
@@ -373,12 +524,22 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       const c: [number, number] = [center[0], center[1]]
       type Cl = {x: number; y: number; members: Pin[]; fade: number}
       const clusters: Cl[] = []
+      const lens = Math.min(R * k, R * 1.1)
       for (const p of pins) {
-        const d = geoDistance([p.lng, p.lat], c)
-        if (d > Math.PI / 2 - 0.02) continue
-        const xy = proj([p.lng, p.lat])
-        if (!xy || Math.hypot(xy[0] - W / 2, xy[1] - H / 2) > Math.min(R * k, R * 1.1) - 4) continue
-        const fade = Math.min(1, (Math.PI / 2 - d) / 0.25)
+        let xy: [number, number] | null
+        let fade = 1
+        if (cityOn) {
+          // City view: Sydney's events only, placed on the flat map.
+          if (!inSydney(p.lng, p.lat)) continue
+          xy = cityXY(p.lng, p.lat)
+          fade = cityA
+        } else {
+          const d = geoDistance([p.lng, p.lat], c)
+          if (d > Math.PI / 2 - 0.02) continue
+          xy = proj([p.lng, p.lat]) as [number, number] | null
+          fade = Math.min(1, (Math.PI / 2 - d) / 0.25) * (1 - cityA)
+        }
+        if (!xy || Math.hypot(xy[0] - W / 2, xy[1] - H / 2) > lens - 4) continue
         const hit = clusters.find((cl) => Math.hypot(cl.x - xy[0], cl.y - xy[1]) < CLUSTER_PX)
         if (hit) {
           hit.members.push(p)
@@ -436,6 +597,13 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
         const lat = members.reduce((s, m) => s + m.lat, 0) / members.length
         const lng = meanLng(members.map((m) => m.lng))
         const spread = Math.max(...members.map((m) => geoDistance([m.lng, m.lat], [lng, lat])))
+        if (cityOn) {
+          // On the city map: zoom in until they separate, else list them.
+          if (spread < 1e-6 || cityK >= CITY_K_MAX * 0.95) return openPopover(members, key)
+          return cityZoomTo([lng, lat], cityK * 2.4)
+        }
+        // A group of Sydney events opens the city map instead of zooming the globe.
+        if (members.every((m) => inSydney(m.lng, m.lat))) return enterCity()
         // Zoom until they separate; pins at the same spot can never separate,
         // so those (or anything at max zoom) open a list instead.
         if (spread < 1e-4 || k >= K_MAX * 0.95) return openPopover(members, key)
@@ -504,7 +672,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     let inertia = 0
 
     root.addEventListener('pointerdown', (e) => {
-      if ((e.target as Element).closest('.gpin, .gpop, .globe-ctl')) return
+      if ((e.target as Element).closest('.gpin, .gpop, .globe-ctl, .globe-city')) return
       closePopover()
       cancelAnimationFrame(anim)
       cancelAnimationFrame(inertia)
@@ -515,7 +683,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       vel = {x: 0, y: 0, t: performance.now()}
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()]
-        pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), k}
+        pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), k: cityOn ? cityK : k}
       }
       root.classList.add('grabbing')
     })
@@ -527,6 +695,12 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       pointers.set(e.pointerId, cur)
       if (pointers.size === 2 && pinch) {
         const [a, b] = [...pointers.values()]
+        if (cityOn) {
+          cityK = Math.max(1, Math.min(CITY_K_MAX, (pinch.k * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d))
+          cityC = clampCity(cityC)
+          request()
+          return
+        }
         k = clampK((pinch.k * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d)
         request()
         return
@@ -534,6 +708,12 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       const dx = cur.x - prev.x
       const dy = cur.y - prev.y
       moved += Math.abs(dx) + Math.abs(dy)
+      if (cityOn) {
+        const cs = cityScale(Math.min(R * k, R * 1.1))
+        cityC = clampCity([cityC[0] - dx / (cs * cosLat), cityC[1] + dy / cs])
+        request()
+        return
+      }
       const s = degPerPx()
       center = [center[0] - dx * s, clampLat(center[1] + dy * s)]
       const now = performance.now()
@@ -550,7 +730,7 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       dragging = false
       root.classList.remove('grabbing')
       // Fling: keep spinning and ease to a stop.
-      if (!reduceMotion && performance.now() - vel.t < 80 && moved > 6) {
+      if (!cityOn && !reduceMotion && performance.now() - vel.t < 80 && moved > 6) {
         let vx = vel.x
         let vy = vel.y
         let last = performance.now()
@@ -576,6 +756,14 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     root.addEventListener(
       'wheel',
       (e) => {
+        if (cityOn) {
+          if (e.deltaY > 0 && cityK <= 1.001) return
+          e.preventDefault()
+          cityK = Math.max(1, Math.min(CITY_K_MAX, cityK * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0022))))
+          cityC = clampCity(cityC)
+          request()
+          return
+        }
         if (e.deltaY > 0 && k <= K_MIN + 0.001) return
         e.preventDefault()
         cancelAnimationFrame(anim)
@@ -587,6 +775,25 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
 
     root.addEventListener('keydown', (e) => {
       if (e.target !== root) return
+      if (cityOn) {
+        const st = 0.03 / cityK
+        const cm: Record<string, () => void> = {
+          ArrowLeft: () => (cityC = clampCity([cityC[0] - st, cityC[1]])),
+          ArrowRight: () => (cityC = clampCity([cityC[0] + st, cityC[1]])),
+          ArrowUp: () => (cityC = clampCity([cityC[0], cityC[1] + st])),
+          ArrowDown: () => (cityC = clampCity([cityC[0], cityC[1] - st])),
+          '+': () => cityZoomTo(cityC, cityK * 1.6),
+          '=': () => cityZoomTo(cityC, cityK * 1.6),
+          '-': () => cityZoomTo(cityC, cityK / 1.6),
+          '0': () => exitCity(),
+        }
+        const cf = cm[e.key]
+        if (!cf) return
+        e.preventDefault()
+        cf()
+        request()
+        return
+      }
       const s = 12 / k
       const moves: Record<string, () => void> = {
         ArrowLeft: () => (center = [center[0] - s, center[1]]),
@@ -608,6 +815,12 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
     root.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
       b.addEventListener('click', () => {
         const z = b.dataset.zoom
+        if (cityOn) {
+          if (z === 'in') cityZoomTo(cityC, cityK * 1.8)
+          else if (z === 'out') cityK <= 1.001 ? exitCity() : cityZoomTo(cityC, cityK / 1.8)
+          else exitCity()
+          return
+        }
         if (z === 'in') zoomBy(1.8)
         else if (z === 'out') zoomBy(1 / 1.8)
         else animateTo(home, 1)
@@ -618,7 +831,9 @@ const data = pins.map(({id, slug, city, lat, lng}) => ({id, slug, city, lat, lng
       if (popover && !(e.target as Element).closest('.gpop, .gcluster')) closePopover()
     })
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closePopover()
+      if (e.key !== 'Escape') return
+      if (popover) closePopover()
+      else if (cityOn && root.contains(document.activeElement)) exitCity()
     })
 
     // Open on the events together with the highlighted countries, so the

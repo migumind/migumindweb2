@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro'
 import EventGlobe from '../../components/EventGlobe.astro'
 import EventLogo from '../../components/EventLogo.astro'
 import StickerWall from '../../components/StickerWall.astro'
+import UpcomingEvents from '../../components/UpcomingEvents.astro'
 import {formatDate, getEvents, getEventsPage} from '../../lib/sanity'
 import {resolveGeo} from '../../lib/cities'
 
@@ -34,6 +35,8 @@ const pins = placed
     </section>
 
     <div class="wrap">
+      <UpcomingEvents limit={12} linkAll={false} />
+
       <section class="blk">
         <div class="sh">
           <h2>All events</h2>

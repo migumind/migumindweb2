@@ -1,0 +1,42 @@
+---
+// An event poster taped up on the wall, with the "designed by migu." sticker
+// when Migu made it. Links to `href` (the full-size image by default).
+import {ratioOf, urlFor} from '../lib/image'
+
+interface Props {
+  poster: {asset?: {_ref?: string}}
+  title: string
+  byMigu?: boolean
+  href?: string
+  /** Display width the image is fetched for. */
+  width?: number
+  class?: string
+  style?: string
+  eager?: boolean
+}
+
+const {poster, title, byMigu = false, href, width = 1100, class: cls = '', style, eager = false} = Astro.props
+const full = urlFor(poster).url()
+---
+
+<figure class={`pinned ${cls}`} style={style}>
+  <span class="tape t1" aria-hidden="true"></span>
+  <span class="tape t2" aria-hidden="true"></span>
+  <a href={href ?? full} {...(href ? {} : {target: '_blank', rel: 'noopener'})}>
+    <img
+      src={urlFor(poster).width(width).fit('max').auto('format').url()}
+      style={`aspect-ratio:${ratioOf(poster, '3 / 4')}`}
+      alt={`Poster for ${title}`}
+      loading={eager ? 'eager' : 'lazy'}
+    />
+  </a>
+  {
+    byMigu && (
+      <span class="designedby" role="note">
+        <span class="m">DESIGNED BY</span>
+        <span class="who">migu.</span>
+      </span>
+    )
+  }
+  <slot />
+</figure>

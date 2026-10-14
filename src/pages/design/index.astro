@@ -6,6 +6,9 @@ import {ratioOf, responsive, urlFor} from '../../lib/image'
 
 const projects = await getDesignProjects()
 
+// Commissions are hidden for now; flip this back on once there are projects to show.
+const SHOW_COMMISSIONS = false
+
 // Shown until the first design project is published, so the layout is visible
 // and it's clear which studio field lands where.
 const TEMPLATE = [
@@ -19,17 +22,17 @@ const TEMPLATE = [
     <div class="band" style="--accent:var(--cobalt)">
       <h1>Graphic<br />design</h1>
       <span class="sub m m11">
-        PORTFOLIO + COMMISSIONS<br />MIGUMIND / 2026
+        PORTFOLIO 2024<br />MIGUMIND / 2026
       </span>
     </div>
 
     <div class="wrap">
       <section class="blk">
-        <details class="folio" id="portfolio">
-          <summary>
-            <span class="t">Portfolio 2024</span>
-            <span class="m m11 dim hint"><span class="open">Open ↓</span><span class="close">Close ↑</span></span>
-          </summary>
+        <div class="folio" id="portfolio">
+          <div class="folio-head">
+            <h2 class="t">Portfolio 2024</h2>
+            <span class="m m11 dim">SCROLL ↓</span>
+          </div>
           <div class="folio-body">
             <img
               src="/design/portfolio-2024.webp"
@@ -41,11 +44,11 @@ const TEMPLATE = [
               loading="lazy"
               decoding="async"
             />
-            <button type="button" class="folio-close m m11" data-folio-toggle>Close portfolio ↑</button>
           </div>
-        </details>
+        </div>
       </section>
 
+      {SHOW_COMMISSIONS && (
       <section class="blk" style="padding-top:0">
         <div class="sh">
           <h2>Commissions</h2>
@@ -141,34 +144,46 @@ const TEMPLATE = [
           }
         </div>
       </section>
+      )}
     </div>
   </div>
 
-  <button type="button" class="bookflip" data-folio-toggle aria-controls="portfolio" aria-expanded="false" aria-label="Open portfolio">
-    <picture>
-      <source srcset="/design/bookflip-still.webp" media="(prefers-reduced-motion: reduce)" />
-      <img src="/design/bookflip.webp" width="240" height="135" alt="" />
-    </picture>
-  </button>
+  <div class="bookflip-wrap" data-bookflip>
+    <a class="bookflip" href="#portfolio" aria-label="Back to the top of the portfolio">
+      <picture>
+        <source srcset="/design/bookflip-still.webp" media="(prefers-reduced-motion: reduce)" />
+        <img src="/design/bookflip.webp" width="240" height="135" alt="" />
+      </picture>
+    </a>
+    <button type="button" class="bookflip-x" data-bookflip-hide aria-label="Hide the book animation">×</button>
+  </div>
+  <button type="button" class="bookflip-show m" data-bookflip-show hidden>Show book ↗</button>
 
   <script is:inline>
     ;(function () {
-      var folio = document.getElementById('portfolio')
-      var book = document.querySelector('.bookflip')
-      function sync() {
-        book.setAttribute('aria-expanded', String(folio.open))
-        book.setAttribute('aria-label', folio.open ? 'Close portfolio' : 'Open portfolio')
+      var wrap = document.querySelector('[data-bookflip]')
+      var show = document.querySelector('[data-bookflip-show]')
+      function set(hidden) {
+        wrap.hidden = hidden
+        show.hidden = !hidden
+        try {
+          localStorage.setItem('bookflip-hidden', hidden ? '1' : '')
+        } catch (e) {}
       }
-      folio.addEventListener('toggle', sync)
-      document.querySelectorAll('[data-folio-toggle]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          folio.open = !folio.open
-          folio.scrollIntoView({behavior: 'smooth', block: 'start'})
-        })
+      try {
+        if (localStorage.getItem('bookflip-hidden') === '1') {
+          wrap.hidden = true
+          show.hidden = false
+        }
+      } catch (e) {}
+      document.querySelector('[data-bookflip-hide]').addEventListener('click', function () {
+        set(true)
+        show.focus()
       })
-      // Linking straight to /design#portfolio opens it.
-      if (location.hash === '#portfolio') folio.open = true
-      sync()
+      show.addEventListener('click', function () {
+        set(false)
+        wrap.querySelector('.bookflip').focus()
+      })
     })()
   </script>
 </Base>

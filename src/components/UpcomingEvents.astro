@@ -1,0 +1,104 @@
+---
+// "Upcoming events": dated events from today on, soonest first, each with a calendar
+// tile. With nothing scheduled it invites bookings instead of disappearing.
+import Gloss from './Gloss.astro'
+import Collaborators from './Collaborators.astro'
+import PosterPin from './PosterPin.astro'
+import {getUpcomingEvents} from '../lib/sanity'
+import {resolveGeo} from '../lib/cities'
+
+interface Props {
+  /** Most events to list. */
+  limit?: number
+  /** Link through to the full events page (off on the events page itself). */
+  linkAll?: boolean
+  /** Pin the events' posters up in a row above the list. */
+  posters?: boolean
+}
+const {limit = 4, linkAll = true, posters = false} = Astro.props
+
+const upcoming = (await getUpcomingEvents().catch(() => [])).slice(0, limit)
+const pinned = posters ? upcoming.filter((e) => e.poster?.asset) : []
+
+// Dates are plain YYYY-MM-DD; read them in UTC so no timezone shifts the day.
+const part = (iso: string, o: Intl.DateTimeFormatOptions) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', {...o, timeZone: 'UTC'}).toUpperCase()
+---
+
+<section class="blk upcoming">
+  <div class="sh">
+    <div>
+      <h2>Upcoming events</h2>
+      <Gloss tl="pa-pa-ra-ti-ng" en="coming soon" />
+    </div>
+    <div class="r">
+      <span class="m dimmer">LIVE PAINTING / SHOWS</span>
+      {linkAll && <a class="m dimmer" href="/events">ALL EVENTS →</a>}
+    </div>
+  </div>
+
+  {
+    pinned.length > 0 && (
+      <div class="posterwall" style={`--n:${pinned.length}`}>
+        {pinned.map((e, i) => (
+          <PosterPin
+            poster={e.poster!}
+            title={e.title}
+            byMigu={e.posterByMigu}
+            href={`/events/${e.slug}`}
+            width={640}
+            style={`--i:${i}`}
+          >
+            <span class="datetag m">{part(e.date!, {day: 'numeric', month: 'short'})}</span>
+          </PosterPin>
+        ))}
+      </div>
+    )
+  }
+
+  {
+    upcoming.length > 0 ? (
+      <ol class="uplist">
+        {upcoming.map((e) => {
+          const city = resolveGeo(e)?.city ?? e.city
+          const where = [e.location, city && !e.location?.toLowerCase().includes(city.toLowerCase()) && city]
+            .filter(Boolean)
+            .join(' — ')
+          return (
+            <li>
+              <time class="cal" datetime={e.date}>
+                <span class="mo m">{part(e.date!, {month: 'short'})}</span>
+                <span class="dd">{part(e.date!, {day: 'numeric'})}</span>
+                <span class="wd m">{part(e.date!, {weekday: 'short'})}</span>
+              </time>
+              <div class="info">
+                <a class="ttl" href={`/events/${e.slug}`}>{e.title}</a>
+                <span class="m dim">{[where || 'Location TBC', e.time].filter(Boolean).join(' / ')}</span>
+                {e.collaborators && e.collaborators.length > 0 && (
+                  <span class="with m">
+                    WITH <Collaborators list={e.collaborators} />
+                  </span>
+                )}
+              </div>
+              <div class="acts">
+                {e.link && (
+                  <a class="cta" href={e.link} target="_blank" rel="noopener">
+                    Tickets / RSVP ↗
+                  </a>
+                )}
+                <a class="chip" href={`/events/${e.slug}`}>Details →</a>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    ) : (
+      <div class="upempty">
+        <p class="lede">Nothing on the calendar just yet. New dates land here first.</p>
+        <p class="m dim">
+          WANT LIVE PAINTING AT YOUR EVENT? <a href="/contact">GET IN TOUCH →</a>
+        </p>
+      </div>
+    )
+  }
+</section>

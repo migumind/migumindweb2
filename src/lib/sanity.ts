@@ -160,6 +160,11 @@ export type EventItem = {
   title: string
   slug: string
   date?: string
+  time?: string
+  link?: string
+  collaborators?: {name?: string; instagram?: string}[]
+  poster?: {asset?: {_ref?: string}}
+  posterByMigu?: boolean
   location?: string
   city?: string
   country?: string
@@ -167,15 +172,32 @@ export type EventItem = {
   logoStyle?: string
   description?: any[]
   images?: {_key?: string; asset?: {_ref?: string}}[]
+  videos?: {_key?: string; url?: string; mimeType?: string}[]
 }
 
 export const getEvents = () =>
   sanityClient.fetch<EventItem[]>(
     `*[_type == "event" && defined(slug.current)]|order(order asc, date desc){
-      _id, title, date, location, city, country, coordinates, logoStyle, description,
+      _id, title, date, time, link, collaborators[]{name, instagram}, location, city, country, coordinates, logoStyle, description,
+      poster, posterByMigu,
       images[defined(asset)]{_key, asset},
+      videos[defined(asset)]{_key, "url": asset->url, "mimeType": asset->mimeType},
       "slug": slug.current
     }`,
+  )
+
+/** Today's date in Sydney, as YYYY-MM-DD (what Sanity date fields hold). */
+export const sydneyToday = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'Australia/Sydney'}).format(new Date())
+
+/** Events dated today or later, soonest first. The site rebuilds daily, so past ones drop off. */
+export const getUpcomingEvents = () =>
+  sanityClient.fetch<EventItem[]>(
+    `*[_type == "event" && defined(slug.current) && date >= $today]|order(date asc){
+      _id, title, date, time, link, collaborators[]{name, instagram}, location, city, country, coordinates, logoStyle,
+      poster, posterByMigu,
+      "slug": slug.current
+    }`,
+    {today: sydneyToday()},
   )
 
 export type Sticker = {_key?: string; asset?: {_ref?: string}; size?: number}

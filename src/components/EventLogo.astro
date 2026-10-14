@@ -3,12 +3,25 @@
 // font-size, so the same markup works as a globe pin label or a page title.
 
 // Keep in sync with LOGO_STYLES in studio/schemaTypes/event.ts.
-const LOGO_STYLES = ['script', 'stripe', 'bubble', 'property', 'pop', 'varsity', 'globe', 'block'] as const
+const LOGO_STYLES = [
+  'script', 'stripe', 'bubble', 'property', 'pop', 'varsity', 'globe', 'block',
+  'gothic', 'garden', 'market', 'racing', 'book', 'board',
+] as const
+
+// With no style picked in the studio, the title chooses one that suits it.
+const THEMES: [RegExp, string][] = [
+  [/chess|mahjong|tournament|game night|board ?game/i, 'board'],
+  [/hallowe|tattoo|flash|monarch|skull|spook|goth/i, 'gothic'],
+  [/garden|park|picnic|bloom|flower|botanic/i, 'garden'],
+  [/mart\b|market|fair\b|swap|bazaar|vendor/i, 'market'],
+  [/\bcars?\b|race|racing|drive|motor|speed|garage/i, 'racing'],
+  [/literature|book|poet|zine|letters|library|read/i, 'book'],
+]
 
 interface Props {
   title: string
   style?: string
-  /** Seeds the automatic style when none is picked in the studio. */
+  /** Seeds the automatic style when none is picked and no theme matches. */
   seed?: string
   sub?: string
 }
@@ -17,13 +30,20 @@ const {title, style, seed = title, sub} = Astro.props
 
 let h = 0
 for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
-const v = style && (LOGO_STYLES as readonly string[]).includes(style) ? style : LOGO_STYLES[h % LOGO_STYLES.length]
+const themed = THEMES.find(([re]) => re.test(title))?.[1]
+const v =
+  style && (LOGO_STYLES as readonly string[]).includes(style)
+    ? style
+    : (themed ?? LOGO_STYLES.slice(0, 8)[h % 8])
 ---
 
 <span class={`elogo elogo-${v}`}>
   {v === 'property' && <span class="pre">Property of</span>}
+  {v === 'garden' && <span class="bloom" aria-hidden="true">✿</span>}
   <span class="name">{title}</span>
   {(v === 'property' || v === 'varsity') && <span class="post">{sub ?? 'Worldwide'}</span>}
+  {v === 'gothic' && <span class="post">{sub ?? 'One night only'}</span>}
   {(v === 'script' || v === 'pop' || v === 'bubble') && <sup class="mk">{v === 'script' ? '®' : '™'}</sup>}
   {v === 'varsity' && <span class="star" aria-hidden="true">★</span>}
+  {v === 'racing' && <span class="flag" aria-hidden="true"></span>}
 </span>

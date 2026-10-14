@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro'
 import Gloss from '../../components/Gloss.astro'
+import {INSTAGRAM, INSTAGRAM_URL} from '../../lib/social'
 
 // The printed sheet, drawn once and reused for each shredded strip.
 const STRIPS = 10
@@ -128,6 +129,12 @@ const strips = Array.from({length: STRIPS}, (_, i) => ({
           </p>
           <p class="last">
             This is where he is now. It is probably where you are too, reading this.
+          </p>
+
+          <p class="aboutlinks m">
+            KEEP UP WITH MIGU:
+            <a href={INSTAGRAM_URL} target="_blank" rel="noopener">@{INSTAGRAM} ↗</a>
+            <a href="/contact">SAY HI →</a>
           </p>
 
           <aside class="aisign">
