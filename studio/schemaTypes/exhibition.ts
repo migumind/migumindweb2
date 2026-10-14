@@ -85,6 +85,19 @@ export default defineType({
       of: [{type: 'image', options: {hotspot: true}}],
     }),
     defineField({
+      name: 'videos',
+      type: 'array',
+      description: 'Short clips from the show. They play silently on a loop among the installation shots. Keep each one small (under ~10 MB).',
+      of: [{type: 'file', options: {accept: 'video/*'}}],
+    }),
+    defineField({
+      name: 'note',
+      title: 'A note from Migu',
+      type: 'array',
+      of: [{type: 'block'}],
+      description: 'A personal reflection on the show, in your own words. Shown as its own note under the installation shots.',
+    }),
+    defineField({
       name: 'order',
       type: 'number',
       description: 'Lower numbers appear first.',

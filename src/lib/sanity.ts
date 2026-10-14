@@ -61,11 +61,14 @@ export type Exhibition = {
   heroImage?: {asset?: {_ref?: string}}
   heroVideo?: {asset?: {url?: string; mimeType?: string}}
   installationImages?: {asset?: {_ref?: string}}[]
+  videos?: {_key?: string; url?: string; mimeType?: string}[]
+  note?: any[]
 }
 
 const EXHIBITION_FIELDS = `
   _id, title, number, accent, bandText, year, dates, location, collaborators,
   statement, heroImage, heroVideo{asset->{url, mimeType}}, "installationImages": installationImages[defined(asset)],
+  videos[defined(asset)]{_key, "url": asset->url, "mimeType": asset->mimeType}, note,
   "slug": slug.current
 `
 
