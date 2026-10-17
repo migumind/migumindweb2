@@ -234,3 +234,13 @@ export const getDesignProjects = () =>
       "slug": slug.current
     }`,
   )
+
+export type CommunityDrawing = {_id: string; _createdAt: string; drawing: string; name?: string; received: string; from?: string}
+
+/** Drawings from the contact page's pixel pad, featured in the community gallery. Newest first. */
+export const getCommunityDrawings = () =>
+  sanityClient.fetch<CommunityDrawing[]>(
+    `*[_type == "communityDrawing" && defined(drawing) && !(_id in path("drafts.**"))]|order(received desc, _createdAt desc){
+      _id, _createdAt, drawing, name, received, from
+    }`,
+  )

@@ -1,0 +1,15 @@
+name = "migumind-reactions"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://migumind.com,https://www.migumind.com,http://localhost:4321"
+
+# Created with `npx wrangler d1 create migumind-reactions`; paste the id it prints.
+[[d1_databases]]
+binding = "DB"
+database_name = "migumind-reactions"
+database_id = "REPLACE-ME"
+
+# SALT is a secret (any long random string) — set it with
+#   npx wrangler secret put SALT

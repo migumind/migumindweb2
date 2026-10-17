@@ -1,4 +1,5 @@
 import artwork from './artwork'
+import communityDrawing from './communityDrawing'
 import designProject from './designProject'
 import event from './event'
 import exhibition from './exhibition'
@@ -7,4 +8,4 @@ import sketchbook from './sketchbook'
 import stickerSheet from './stickerSheet'
 import studioEntry from './studioEntry'
 
-export const schemaTypes = [homePage, artwork, studioEntry, sketchbook, exhibition, event, designProject, stickerSheet]
+export const schemaTypes = [homePage, artwork, studioEntry, sketchbook, exhibition, event, designProject, stickerSheet, communityDrawing]

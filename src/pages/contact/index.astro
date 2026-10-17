@@ -1,8 +1,15 @@
 ---
 import Base from '../../layouts/Base.astro'
 import Gloss from '../../components/Gloss.astro'
+import CommunityGallery from '../../components/CommunityGallery.astro'
 import {PALETTE, SIZE} from '../../lib/pixel'
 import {EMAIL, INSTAGRAM, INSTAGRAM_URL} from '../../lib/social'
+import {getCommunityDrawings} from '../../lib/sanity'
+import {SAMPLE_DRAWINGS} from '../../lib/sampleDrawings'
+
+// Real drawings from Sanity. In dev, an empty gallery shows labelled samples for review.
+const community = await getCommunityDrawings()
+const sampleGallery = import.meta.env.DEV && community.length === 0
 
 // Unlocks Send. A real drawing takes a person a minute; a form-filling bot won't bother.
 const MIN_PIXELS = 12
@@ -117,6 +124,7 @@ const NAMES = ['Eraser', 'Ink', 'Paper', 'Vermilion', 'Mustard', 'Forest', 'Sage
             <button class="send" type="submit" data-send disabled>Send it →</button>
             <p class="m dim small">
               Opens your email app with your message and a link to your drawing, addressed to me.
+              Favourite drawings may be stamped into the community gallery below, with your OK.
             </p>
             <div class="sent" data-sent hidden>
               <p>Your email app should be open. Nothing happened?</p>
@@ -126,6 +134,8 @@ const NAMES = ['Eraser', 'Ink', 'Paper', 'Vermilion', 'Mustard', 'Forest', 'Sage
           </div>
         </form>
       </section>
+
+      <CommunityGallery drawings={sampleGallery ? SAMPLE_DRAWINGS : community} sample={sampleGallery} />
     </div>
   </div>
 </Base>

@@ -1,0 +1,211 @@
+---
+// Drawings people sent from the pixel pad, pinned up as postage stamps.
+// Each stamp is drawn at build time as crisp SVG pixels; its tilt and offset come
+// from its id, so the scatter is the same on every build. Reactions load live.
+import Gloss from './Gloss.astro'
+import {PALETTE, SIZE, decode} from '../lib/pixel'
+import {REACTIONS, REACTION_LABELS, REACTIONS_ENABLED, REACTIONS_ENDPOINT} from '../lib/reactions'
+import type {CommunityDrawing} from '../lib/sanity'
+
+interface Props {
+  drawings: CommunityDrawing[]
+  /** Dev preview with sample drawings: labelled so it's never mistaken for real ones. */
+  sample?: boolean
+}
+
+const {drawings, sample = false} = Astro.props
+
+// Small, stable pseudo-random numbers from a string: FNV-1a for the id, then a
+// murmur3-style finaliser per key so neighbouring keys come out independent.
+const seeded = (s: string) => {
+  let h = 2166136261
+  for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
+  return (k: number) => {
+    let x = (h ^ Math.imul(k, 0x9e3779b1)) >>> 0
+    x = Math.imul(x ^ (x >>> 16), 0x85ebca6b)
+    x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35)
+    return ((x ^ (x >>> 16)) >>> 0) / 4294967296
+  }
+}
+
+const STAMP_BG = ['#F4EFE1', '#EAF1F4', '#F6ECEC', '#EEF2E6', '#F4F0FA']
+
+// Stamp numbers follow the order drawings were added in Sanity: the first one in is Nº 001.
+const order = new Map(
+  [...drawings].sort((a, b) => a._createdAt.localeCompare(b._createdAt)).map((d, i) => [d._id, i + 1]),
+)
+
+const stamps = drawings
+  .map((d) => {
+    const px = decode(d.drawing.trim().slice(-(SIZE * SIZE + 1)))
+    if (!px) return null
+    const r = seeded(d._id)
+    const date = new Date(d.received + 'T00:00:00')
+    return {
+      id: d._id,
+      px,
+      no: String(order.get(d._id)).padStart(3, '0'),
+      name: d.name?.trim() || '',
+      from: (d.from?.trim() || 'Migu Post').toUpperCase(),
+      date: date.toLocaleDateString('en-AU', {day: '2-digit', month: 'short', year: '2-digit'}).toUpperCase(),
+      rot: (r(1) * 12 - 6).toFixed(1),
+      dx: (r(2) * 24 - 12).toFixed(0),
+      dy: (r(3) * 36 - 18).toFixed(0),
+      bg: STAMP_BG[Math.floor(r(4) * STAMP_BG.length)],
+      postmark: r(5) > 0.35,
+      pmRot: (r(6) * 50 - 25).toFixed(0),
+    }
+  })
+  .filter((s) => s !== null)
+---
+
+<section class="blk community" id="gallery">
+  <div class="sh">
+    <div>
+      <h2>Community gallery</h2>
+      <Gloss tl="gu-hi-t ni-n-yo" en="your drawings" />
+    </div>
+    <div class="r">
+      <span class="m dimmer">{`${sample ? 'DEV PREVIEW / ' : ''}${String(stamps.length).padStart(2, '0')} STAMPS`}</span>
+      <a class="m dimmer" href="#doodle">DRAW ONE ↑</a>
+    </div>
+  </div>
+
+  <p class="m dim cg-intro">
+    Drawings sent in from the pixel pad above, stamped and pinned up with the sender's OK.
+  </p>
+
+  {
+    stamps.length === 0 ? (
+      <div class="cg-empty">
+        <p class="lede">No stamps yet. Send a doodle and yours could be the first.</p>
+        <a class="chip" href="#doodle">Draw something ↑</a>
+      </div>
+    ) : (
+      <ul class="stampwall" data-gallery data-endpoint={REACTIONS_ENDPOINT} data-live={REACTIONS_ENABLED ? '' : undefined}>
+        {stamps.map((s) => (
+          <li class="stamp-pin" style={`--rot:${s.rot}deg;--dx:${s.dx}px;--dy:${s.dy}px`}>
+            <figure class="stamp" style={`--sbg:${s.bg}`}>
+              <div class="stamp-face">
+                <div class="stamp-top m"><span>Nº {s.no}</span><span>MIGU POST</span></div>
+                <svg class="stamp-art" viewBox={`0 0 ${SIZE} ${SIZE}`} shape-rendering="crispEdges" role="img" aria-label={s.name ? `Pixel drawing Nº ${s.no} by ${s.name}` : `Pixel drawing Nº ${s.no}`}>
+                  {s.px.map((c, n) => (c ? <rect x={n % SIZE} y={Math.floor(n / SIZE)} width="1.02" height="1.02" fill={PALETTE[c]} /> : null))}
+                </svg>
+                <figcaption class="stamp-bottom"><span class="who">{s.name}</span><span class="m">77¢</span></figcaption>
+              </div>
+              {s.postmark && (
+                <svg class="postmark" viewBox="0 0 120 60" aria-hidden="true" style={`--pm:${s.pmRot}deg`}>
+                  <circle cx="30" cy="30" r="24" />
+                  <circle cx="30" cy="30" r="17" />
+                  <text x="30" y="27" text-anchor="middle">{s.from.slice(0, 11)}</text>
+                  <text x="30" y="37" text-anchor="middle">{s.date}</text>
+                  <path d="M58 18 q8 -5 16 0 t16 0 t16 0 t14 0 M58 30 q8 -5 16 0 t16 0 t16 0 t14 0 M58 42 q8 -5 16 0 t16 0 t16 0 t14 0" />
+                </svg>
+              )}
+            </figure>
+            {REACTIONS_ENABLED && (
+              <div class="reacts" role="group" aria-label={`React to drawing Nº ${s.no}`} data-drawing={s.id}>
+                {REACTIONS.map((e) => (
+                  <button type="button" class="react" data-emoji={e} aria-pressed="false" title={REACTION_LABELS[e]}>
+                    <span class="e" aria-hidden="true">{e}</span>
+                    <span class="n" data-n>0</span>
+                    <span class="visually-hidden">{REACTION_LABELS[e]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</section>
+
+<script>
+  const wall = document.querySelector<HTMLElement>('[data-gallery]')
+  if (wall && wall.hasAttribute('data-live')) {
+    const endpoint = wall.dataset.endpoint || ''
+    const KEY = 'migu-reacts'
+    const mine = new Set<string>(
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem(KEY) || '[]')
+        } catch {
+          return []
+        }
+      })(),
+    )
+    const save = () => {
+      try {
+        localStorage.setItem(KEY, JSON.stringify([...mine]))
+      } catch {}
+    }
+
+    const groups = [...wall.querySelectorAll<HTMLElement>('.reacts')]
+    const buttonsOf = (g: HTMLElement) => [...g.querySelectorAll<HTMLButtonElement>('.react')]
+    const set = (b: HTMLButtonElement, n: number, on: boolean) => {
+      b.querySelector('[data-n]')!.textContent = String(Math.max(0, n))
+      b.setAttribute('aria-pressed', String(on))
+      b.classList.toggle('has', n > 0)
+    }
+
+    // Paint this visitor's own reactions straight away, then fill in everyone's counts.
+    groups.forEach((g) =>
+      buttonsOf(g).forEach((b) => {
+        const on = mine.has(`${g.dataset.drawing}|${b.dataset.emoji}`)
+        set(b, on ? 1 : 0, on)
+      }),
+    )
+    if (endpoint) {
+      fetch(`${endpoint}/counts`)
+        .then((r) => r.json())
+        .then(({counts}) =>
+          groups.forEach((g) =>
+            buttonsOf(g).forEach((b) => {
+              const key = `${g.dataset.drawing}|${b.dataset.emoji}`
+              set(b, counts?.[g.dataset.drawing!]?.[b.dataset.emoji!] ?? 0, mine.has(key))
+            }),
+          ),
+        )
+        .catch(() => {})
+    }
+
+    wall.addEventListener('click', async (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.react')
+      if (!b || b.disabled) return
+      const g = b.closest<HTMLElement>('.reacts')!
+      const key = `${g.dataset.drawing}|${b.dataset.emoji}`
+      const on = !mine.has(key)
+      const before = Number(b.querySelector('[data-n]')!.textContent)
+
+      // Optimistic: show it now, settle on the server's number when it answers.
+      on ? mine.add(key) : mine.delete(key)
+      save()
+      set(b, before + (on ? 1 : -1), on)
+      if (on) {
+        b.classList.remove('pop')
+        void b.offsetWidth
+        b.classList.add('pop')
+      }
+      if (!endpoint) return // dev preview: local only
+
+      b.disabled = true
+      try {
+        const res = await fetch(`${endpoint}/react`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({drawing: g.dataset.drawing, emoji: b.dataset.emoji, on}),
+        })
+        if (!res.ok) throw new Error(String(res.status))
+        const {count} = await res.json()
+        set(b, count, on)
+      } catch {
+        on ? mine.delete(key) : mine.add(key)
+        save()
+        set(b, before, !on)
+      } finally {
+        b.disabled = false
+      }
+    })
+  }
+</script>

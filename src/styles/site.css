@@ -422,6 +422,52 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .colnav .chip:hover{background:var(--ink);color:var(--paper)}
 .shop .blk[id]{scroll-margin-top:80px}
 
+/* ============ community gallery: pixel drawings as postage stamps ============ */
+.community .cg-intro{margin:0;max-width:60ch}
+.cg-empty{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:clamp(28px,5vw,56px) 0}
+.stampwall{list-style:none;overflow-x:clip;overflow-clip-margin:12px;margin:clamp(24px,4vw,48px) 0 0;padding:clamp(24px,4vw,48px) 0 clamp(8px,2vw,24px);
+  display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(44px,6vw,80px) clamp(28px,5vw,72px)}
+/* Scatter lives on the slot; the tilt lives on the stamp so reactions stay level. */
+.stamp-pin{width:clamp(170px,18vw,230px);display:flex;flex-direction:column;align-items:center;gap:16px;transform:translate(var(--dx),var(--dy))}
+.stamp{position:relative;margin:0;width:clamp(150px,16vw,196px);transform:rotate(var(--rot));
+  transition:transform .5s cubic-bezier(.2,.8,.2,1);
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.14)) drop-shadow(0 12px 14px rgba(0,0,0,.16))}
+.stamp-pin:hover .stamp,.stamp-pin:focus-within .stamp{transform:rotate(0deg) scale(1.06)}
+/* Perforated edge: holes punched on a grid, kept only outside the inner rectangle. */
+.stamp-face{--r:5px;display:flex;flex-direction:column;gap:6px;background:var(--sbg);color:#141613;padding:calc(var(--r) * 2.6);
+  -webkit-mask:radial-gradient(var(--r),#0000 98%,#000) round calc(-1.5 * var(--r)) calc(-1.5 * var(--r)) / calc(3 * var(--r)) calc(3 * var(--r)),
+    linear-gradient(#000 0 0) no-repeat 50% / calc(100% - 3 * var(--r)) calc(100% - 3 * var(--r));
+  mask:radial-gradient(var(--r),#0000 98%,#000) round calc(-1.5 * var(--r)) calc(-1.5 * var(--r)) / calc(3 * var(--r)) calc(3 * var(--r)),
+    linear-gradient(#000 0 0) no-repeat 50% / calc(100% - 3 * var(--r)) calc(100% - 3 * var(--r))}
+.stamp-top{display:flex;justify-content:space-between;font-size:7.5px;letter-spacing:.1em;color:#565A51}
+.stamp-art{display:block;width:100%;height:auto;aspect-ratio:1;background:#fff;box-shadow:0 0 0 1px rgba(20,22,19,.22),inset 0 0 0 1px rgba(20,22,19,.06)}
+.stamp-bottom{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stamp-bottom .who{font-family:"Reenie Beanie",cursive;font-size:22px;line-height:.9;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.stamp-bottom .m{font-size:9px;color:#565A51}
+.postmark{position:absolute;left:56%;top:-21%;width:118%;height:auto;transform:rotate(var(--pm));pointer-events:none;
+  fill:none;stroke:#141613;stroke-width:1.5;opacity:.5;mix-blend-mode:multiply}
+.postmark text{fill:#141613;stroke:none;font-family:var(--m);font-size:6.4px;letter-spacing:.08em}
+
+.reacts{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:100%}
+.react{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:3px 9px 3px 7px;border:1px solid var(--rule);border-radius:99px;
+  background:var(--paper);color:var(--ink-2);font-family:var(--m);font-size:10px;letter-spacing:.04em;
+  transition:border-color .15s,background .15s,color .15s}
+.react .e{font-size:15px;line-height:1;filter:grayscale(.7);transition:filter .2s,transform .2s}
+.react:not(.has) .n{display:none}
+.react:hover{border-color:var(--ink);color:var(--ink)}
+.react:hover .e{filter:none;transform:scale(1.18)}
+.react[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.react[aria-pressed="true"] .e{filter:none}
+.react.pop .e{animation:rpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes rpop{40%{transform:scale(1.7) rotate(-14deg)}}
+@media(max-width:560px){
+  .stampwall{gap:44px 18px}
+  .stamp{width:min(146px,38vw)}
+  .stamp-pin{transform:translate(calc(var(--dx) * .4),calc(var(--dy) * .5))}
+  .stamp-pin{width:min(160px,42vw)}
+}
+@media (prefers-reduced-motion:reduce){.stamp{transition:none}.react.pop .e{animation:none}}
+
 /* ============ shop + privacy ============ */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,72px);align-items:start}
 @media(max-width:760px){.split{grid-template-columns:1fr}}
@@ -531,6 +577,15 @@ footer.ft .fw{font-variation-settings:"wdth" 122,"wght" 850;font-size:clamp(42px
 .vinyl[data-playing="false"] .lid::before{opacity:0}
 .vinyl[data-playing="false"] .lidmark{opacity:0}
 .vinyl[data-playing="false"] .record{animation-play-state:paused}
+
+/* Closed, nothing inside the case should be paintable. Mobile browsers (Safari above all)
+   can mis-sort this 3D scene and draw the spinning record's layer over the lid, so once
+   the lid has landed (.5s) the insides hide and the deck goes orange. Opening reverses
+   that instantly, before the lid swings up. */
+.vinyl .deck{transition:background-color 0s}
+.vinyl .deck > *{transition:visibility 0s}
+.vinyl[data-playing="false"] .deck{background-color:var(--vermilion);transition:background-color 0s .5s}
+.vinyl[data-playing="false"] .deck > *{visibility:hidden;transition:visibility 0s .5s}
 
 /* A translucent CD left lying on the closed case: clear plastic with a rainbow sheen and a
    frosted hub, so the orange lid shows through. It lifts off and fades as the lid opens. */

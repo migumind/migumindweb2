@@ -24,7 +24,11 @@ const {
 // Absolute URLs for metadata, driven by `site` in astro.config.mjs so the
 // domain lives in exactly one place.
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined
-const ogImage = Astro.site ? new URL('og-image.png', Astro.site).href : '/og-image.png'
+// Bump OG_VERSION whenever og-image.png changes: apps cache link previews by image URL,
+// so a new query string is what makes them fetch the new card.
+const OG_VERSION = '2026-10'
+const ogImage = (Astro.site ? new URL('og-image.png', Astro.site).href : '/og-image.png') + `?v=${OG_VERSION}`
+const OG_ALT = "hi, i'm migu. — the Migumind wordmark circled in orange among Migumind stickers. Artist and designer, Sydney."
 
 // Work-in-progress banner across the top. Dismissing it is remembered per version,
 // so bumping WIP_VERSION brings it back for everyone with the next update.
@@ -61,7 +65,10 @@ const NAV = [
     {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={OG_ALT} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={OG_ALT} />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
